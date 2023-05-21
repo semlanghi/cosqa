@@ -29,6 +29,12 @@ public abstract class Monomial<R> implements Serializable {
         cardinality = 1;
     }
 
+    public Monomial(int coefficient) {
+        this.coefficient = coefficient;
+        variables = new HashMap<>();
+        cardinality = 0;
+    }
+
     private Monomial(int degree, int coefficient, Map<R, Integer> variables, int cardinality) {
         this.degree = degree;
         this.coefficient = coefficient;

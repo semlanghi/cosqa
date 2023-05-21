@@ -16,6 +16,11 @@ import org.apache.kafka.streams.state.ValueAndTimestamp;
 import org.apache.kafka.streams.state.internals.ValueAndTimestampSerde;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.util.function.Consumer;
+import java.util.regex.MatchResult;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ConsistencyAnnotatedRecord<V> {
     private Polynomial polynomial;
@@ -143,17 +148,20 @@ public class ConsistencyAnnotatedRecord<V> {
                 public byte[] serialize(String topic, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>> data) {
                     try {
                         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-
-                        ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
+                        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+//                        ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
 //                        objectOutputStream.writeInt(data.getPolynomial().getDegree());
 //                        objectOutputStream.writeInt(data.getPolynomial().getMonomialsDegreeSum());
 //                        objectOutputStream.writeObject(data.getPolynomial().getMonomials());
 
-
-                        objectOutputStream.writeObject(data.getPolynomial());
+                        String s = data.getPolynomial().toString() + "\n";
+                        int size = s.getBytes().length;
+                        dataOutputStream.writeInt(size);
+                        byteArrayOutputStream.write(s.getBytes());
                         byteArrayOutputStream.write(internalSerde.serializer().serialize(topic, data.getWrappedRecord()));
 
-                        objectOutputStream.close();
+//                        objectOutputStream.close();
+                        dataOutputStream.close();
                         byteArrayOutputStream.close();
 
                         return byteArrayOutputStream.toByteArray();
@@ -168,28 +176,76 @@ public class ConsistencyAnnotatedRecord<V> {
         @Override
         public Deserializer<ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> deserializer() {
             return new Deserializer<ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>() {
+                public Polynomial parsePolynomial(String polynomialStr) {
+                    String termPattern = "(<.*?>)(\\^)(\\d+)";
+                    Pattern pattern = Pattern.compile(termPattern);
+
+                    String[] terms = polynomialStr.split("\\+");
+                    Polynomial polynomial = null;
+
+                    for (String term : terms) {
+                        String coefficientStr = term.split("<")[0];
+                        int coefficient = (coefficientStr != null && !coefficientStr.isEmpty()) ? Integer.parseInt(coefficientStr) : 1;
+
+                        Matcher matcher = pattern.matcher(term);
+                        Monomial<String> nwMonomial = new MonomialImplString(coefficient);
+
+                        matcher.results().forEachOrdered(new Consumer<MatchResult>() {
+                            @Override
+                            public void accept(MatchResult matchResult) {
+                                String variableStr = matchResult.group(1);
+                                String exponentStr = matchResult.group(3);
+
+
+                                int exponent = (exponentStr != null && !exponentStr.isEmpty()) ? Integer.parseInt(exponentStr) : 1;
+
+                                nwMonomial.times(variableStr, exponent);
+                            }
+                        });
+
+
+
+                        if (polynomial==null)
+                            polynomial = new Polynomial(nwMonomial);
+                        else polynomial = polynomial.plus(new Polynomial(nwMonomial));
+                    }
+
+                    return polynomial;
+                }
+
                 @Override
                 public ConsistencyAnnotatedRecord<ValueAndTimestamp<V>> deserialize(String topic, byte[] data) {
                     try {
-                        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(data);
 
-                        ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
+                        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(data);
+                        InputStreamReader in = new InputStreamReader(byteArrayInputStream);
+                        BufferedReader d = new BufferedReader(in);
+                        DataInputStream dataInputStream = new DataInputStream(byteArrayInputStream);
+
+//                        ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
 //                        int degree = objectInputStream.readInt();
 //                        int monomialsDegreeSum = objectInputStream.readInt();
 //                        List<Monomial> monomials = (List<Monomial>) objectInputStream.readObject();
 //                        Polynomial polynomial = new Polynomial(monomials, degree, monomialsDegreeSum);
 
 //                        long timestamp = objectInputStream.readLong();
-                        Polynomial polynomial = (Polynomial) objectInputStream.readObject();
+                        //(Polynomial) objectInputStream.readObject();
+                        int size = dataInputStream.readInt() + 4;
+                        Polynomial polynomial = parsePolynomial(d.readLine());
+                        byteArrayInputStream.reset();
+                        byteArrayInputStream.skip(size);
                         ValueAndTimestamp<V> valueAndTimestamp = internalSerde.deserializer().deserialize(topic, byteArrayInputStream.readAllBytes());
 
-                        objectInputStream.close();
+
+                        d.close();
+//                        objectInputStream.close();
+                        dataInputStream.close();
                         byteArrayInputStream.close();
 
                         return new ConsistencyAnnotatedRecord<>(
                                 polynomial, valueAndTimestamp);
 
-                    } catch (IOException | ClassNotFoundException e) {
+                    } catch (IOException e) {
                         e.printStackTrace();
                     }
                     return null;
@@ -200,20 +256,20 @@ public class ConsistencyAnnotatedRecord<V> {
 
     public static void main(String[] args){
 
-        Monomial monomial = new MonomialImplString("x", 2);
+        Monomial monomial = new MonomialImplString("<xcsdcsdc cdcsd>", 2);
         Polynomial polynomial = new Polynomial(monomial);
         System.out.println(polynomial);
 
-        Monomial monomial1 = new MonomialImplString("y", 2);
-        Monomial monomial2 = new MonomialImplString("x", 2);
+        Monomial monomial1 = new MonomialImplString("<csacd y>", 3333);
+        Monomial monomial2 = new MonomialImplString("<csacdx>", 2);
 //        System.out.println(polynomial.plus(new Polynomial(monomial1)).times(monomial2));
 
         Stock stock = new Stock('A', 12.3, 12L);
         Review review = new Review(120030L, "finalfantasy", 12345L, 5);
         Review review1 = new Review(120030L, "finalfantasy", 12345L, 5);
         Review review2 = new Review(120030L, "finalfantasy", 12345L, 5);
-        ConsistencyAnnotatedRecord<ValueAndTimestamp<Stock>> annM1Stock = new ConsistencyAnnotatedRecord<>(new Polynomial(monomial1), ValueAndTimestamp.make(stock, 12L));
-        ConsistencyAnnotatedRecord<ValueAndTimestamp<Review>> annM1Review = new ConsistencyAnnotatedRecord<>(new Polynomial(monomial1), ValueAndTimestamp.make(review, 12L));
+        ConsistencyAnnotatedRecord<ValueAndTimestamp<Stock>> annM1Stock = new ConsistencyAnnotatedRecord<>(new Polynomial(monomial1).plus(new Polynomial(monomial1)), ValueAndTimestamp.make(stock, 12L));
+        ConsistencyAnnotatedRecord<ValueAndTimestamp<Review>> annM1Review = new ConsistencyAnnotatedRecord<>(new Polynomial(monomial1).plus(new Polynomial(monomial2)), ValueAndTimestamp.make(review, 12L));
 //        Stock stock1 = new Stock('G', 27.3, 13L);
 //        Stock stock2 = new Stock('G', 56.4, 27L);
 

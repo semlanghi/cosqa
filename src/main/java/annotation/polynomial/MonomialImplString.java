@@ -17,6 +17,10 @@ public class MonomialImplString extends Monomial<String> {
         super();
     }
 
+    public MonomialImplString(int coefficient) {
+        super(coefficient);
+    }
+
     @Override
     public void slide(Window window) {
         variables.entrySet().removeIf(new Predicate<Map.Entry<String, Integer>>() {

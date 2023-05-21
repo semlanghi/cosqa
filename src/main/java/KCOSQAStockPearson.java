@@ -97,7 +97,7 @@ public class KCOSQAStockPearson {
         annotatedRecordsState.withLoggingDisabled();
 
 
-        ConstraintFactory<ValueAndTimestamp<Stock>> speedConstraintStockValueFactory = new SpeedConstraintStockValueFactory(0.00000001/constraintStrictness, -0.00000001/constraintStrictness);
+        ConstraintFactory<ValueAndTimestamp<Stock>> speedConstraintStockValueFactory = new SpeedConstraintStockValueFactory(0.000001/constraintStrictness, 0.000001/constraintStrictness);
         KStream<String, ValueAndTimestamp<Stock>> aggregatedStream = stockKStream
                 .transformValues(new ValueTransformerSupplier<>() {
                     @Override
@@ -234,7 +234,7 @@ public class KCOSQAStockPearson {
                              }
                          },
                         Grouped.with("stock-pair-repartition-" + props.getProperty(StreamsConfig.APPLICATION_ID_CONFIG), Serdes.String(), ConsistencyAnnotatedRecord.serde(PairStockSerde.instance())))
-                .windowedBy(annotationAwareTimeWindows)
+                .windowedBy(timeWindows)
                 .aggregate(() -> new ConsistencyAnnotatedRecord<>(ValueAndTimestamp.make(pearsonAggregateInitializer.apply(), 0L)), (key, value, aggregate) -> {
                     Polynomial resultPoly = aggregate.getPolynomial().plus(value.getPolynomial());
                     long ts = Math.max(value.getWrappedRecord().timestamp(), aggregate.getWrappedRecord().timestamp());
