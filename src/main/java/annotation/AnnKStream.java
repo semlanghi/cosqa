@@ -210,6 +210,61 @@ public interface AnnKStream<K, V> {
         }));
     }
 
+    public static <K,V> AnnKStream<K,V> annotateListNotWindowed(KStream<K, V> stream, long scopeSize, long scopeSlide,
+                                                                     ConstraintFactory<ValueAndTimestamp<V>> valueAndTimestampConstraintFactory) {
+        return new AnnKStreamImpl<>(stream.transform(new TransformerSupplier<K, V, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>>() {
+            @Override
+            public Transformer<K, V, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>> get() {
+                return new ConsistencyAnnotatorTransformerNotWindowed<>(ANNOTATE_NAME, scopeSize, scopeSlide);
+            }
+
+
+            public Set<StoreBuilder<?>> stores() {
+                return Collections.singleton(new StoreBuilder<>() {
+                    @Override
+                    public StoreBuilder<StateStore> withCachingEnabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withCachingDisabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withLoggingEnabled(Map<String, String> config) {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withLoggingDisabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StateStore build() {
+                        return new InMemoryWindowDegreeStoreLinkedHashMap<>(ANNOTATE_NAME, scopeSize, scopeSlide, valueAndTimestampConstraintFactory);
+                    }
+
+                    @Override
+                    public Map<String, String> logConfig() {
+                        return null;
+                    }
+
+                    @Override
+                    public boolean loggingEnabled() {
+                        return false;
+                    }
+
+                    @Override
+                    public String name() {
+                        return ANNOTATE_NAME;
+                    }
+                });
+            }
+        }));
+    }
+
 
     public static <K,V> AnnKStream<K,V> annotateGraphList(KStream<K, V> stream, long scopeSize, long scopeSlide,
                                                           ConstraintFactory<ValueAndTimestamp<V>> valueAndTimestampConstraintFactory) {

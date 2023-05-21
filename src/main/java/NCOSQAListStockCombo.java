@@ -1,5 +1,4 @@
 import annotation.AnnKStream;
-import annotation.AnnWindowedTable;
 import annotation.AnnotationAwareTimeWindows;
 import annotation.ConsistencyAnnotatedRecord;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -13,29 +12,39 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
+import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.processor.TimestampExtractor;
-import org.apache.kafka.streams.state.Stores;
+import org.apache.kafka.streams.processor.api.Processor;
+import org.apache.kafka.streams.processor.api.ProcessorSupplier;
+import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.ValueAndTimestamp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stocks.*;
+import stocks.SpeedConstraintStockValueFactory;
+import stocks.Stock;
+import stocks.StockSerde;
 import topkstreaming.CADistanceBasedRanker;
+import topkstreaming.InMemoryTopKKeyValueStore;
 import topkstreaming.Ranker;
+import topkstreaming.TopKCAProcessorNotWindowed;
 import utils.ApplicationSupplier;
 import utils.ExperimentConfig;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 
-public class NCOSQAListStockPearson {
+import static annotation.AnnWindowedTableImpl.TOP_K_NAME;
+
+public class NCOSQAListStockCombo {
 
     public static void main(String[] args) {
 
-        Logger logger = LoggerFactory.getLogger(NCOSQAListStockPearson.class);
+        Logger logger = LoggerFactory.getLogger(NCOSQAListStockCombo.class);
         Properties props = new Properties();
         String appID = UUID.randomUUID().toString();
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "stock-graph-pearson-"+appID);
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, appID);
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, Serdes.String().deserializer().getClass());
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StockSerde.instance().deserializer().getClass());
@@ -46,6 +55,7 @@ public class NCOSQAListStockPearson {
         props.put(StreamsConfig.topicPrefix(TopicConfig.SEGMENT_MS_CONFIG), Long.MAX_VALUE);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID().toString());
 
+
         props.put(ExperimentConfig.CONSTRAINT_STRICTNESS, args[0]);
         props.put(ExperimentConfig.INCONSISTENCY_PERCENTAGE, args[1]);
         props.put(ExperimentConfig.WINDOW_SIZE_MS, args[2]);
@@ -54,8 +64,7 @@ public class NCOSQAListStockPearson {
         props.put(ExperimentConfig.EVENTS_MAX, args[5]);
         props.put(ExperimentConfig.EVENTS_GRANULARITY, args[6]);
 
-        props.put(ExperimentConfig.RESULT_FILE_SUFFIX, "ncosqa-stock-list-pearson");
-        //TODO: insert ExperimentConfig
+        props.put(ExperimentConfig.RESULT_FILE_SUFFIX, "ncosqa-stock-list-combo");
 
         int constraintStrictness = Integer.parseInt(props.getProperty(ExperimentConfig.CONSTRAINT_STRICTNESS));
         Duration size = Duration.ofMillis(Long.parseLong(props.getProperty(ExperimentConfig.WINDOW_SIZE_MS)));
@@ -76,11 +85,10 @@ public class NCOSQAListStockPearson {
                     public long extract(ConsumerRecord<Object, Object> record, long partitionTime) {
                         return ((Stock)record.value()).getTs();
                     }
-                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintStockValueFactory(0.000001/constraintStrictness, -0.000001/constraintStrictness));
+                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintStockValueFactory(0.00000001/constraintStrictness, -0.00000001/constraintStrictness));
 
 
         ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
-
 
         AnnKStream<Long, Stock> windowedStockAnnKStream = annotatedKStream
                 .selectKey(new KeyValueMapper<String, ValueAndTimestamp<Stock>, Long>() {
@@ -100,32 +108,62 @@ public class NCOSQAListStockPearson {
                 },
                 joinWindows,
                 Serdes.Long(), StockSerde.instance()).filterNullValues();
-
-
-        AnnWindowedTable<String, PearsonAggregate> diffStream = joinedStream
-                .groupAndWindowByNotWindowed(new KeyValueMapper<Long, Pair<Stock, Stock>, String>() {
-                    @Override
-                    public String apply(Long key, Pair<Stock, Stock> value) {
-                        return value.getLeft().getName().toString()+""+value.getRight().getName().toString();
-                    }
-                }, timeWindows, Grouped.with("stock-pair-repartition-" + props.getProperty(StreamsConfig.APPLICATION_ID_CONFIG), Serdes.String(), ConsistencyAnnotatedRecord.serde(PairStockSerde.instance())))
-                .aggregate((Initializer<PearsonAggregate>) () -> new PearsonAggregate('Z', 'Z'),
-                        new Aggregator<String, Pair<Stock, Stock>, PearsonAggregate>() {
-                            @Override
-                            public PearsonAggregate apply(String key, Pair<Stock, Stock> value, PearsonAggregate aggregate) {
-                                return aggregate.addUp(value);
-                            }
-                        }, Materialized.<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<PearsonAggregate>>>as(Stores.inMemoryWindowStore(appID, Duration.ofMillis(annotationAwareTimeWindows.size() + annotationAwareTimeWindows.gracePeriodMs()), Duration.ofMillis(annotationAwareTimeWindows.size()), false))
-                                .withKeySerde(Serdes.String()).withValueSerde(ConsistencyAnnotatedRecord.serde(PearsonAggregate.serde())));
-
-//        diffStream.getInternalKTable().toStream().process(new ProcessorSupplier<Windowed<String>, ConsistencyAnnotatedRecord<ValueAndTimestamp<PearsonAggregate>>, Void, Void>() {
+//
+//        joinedStream.getInternalKStream().process(new ProcessorSupplier<Long, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<Stock, Stock>>>, Void, Void>() {
 //            @Override
-//            public Processor<Windowed<String>, ConsistencyAnnotatedRecord<ValueAndTimestamp<PearsonAggregate>>, Void, Void> get() {
+//            public Processor<Long, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<Stock, Stock>>>, Void, Void> get() {
 //                return new PerformanceProcessor<>(applicationSupplier, props);
 //            }
 //        });
 
-        diffStream.topKProcessorVisualizer(ranker, builder, timeWindows, applicationSupplier, props);
+
+        builder.addStateStore(new StoreBuilder<>() {
+            @Override
+            public StoreBuilder<StateStore> withCachingEnabled() {
+                return null;
+            }
+
+            @Override
+            public StoreBuilder<StateStore> withCachingDisabled() {
+                return null;
+            }
+
+            @Override
+            public StoreBuilder<StateStore> withLoggingEnabled(Map<String, String> config) {
+                return null;
+            }
+
+            @Override
+            public StoreBuilder<StateStore> withLoggingDisabled() {
+                return null;
+            }
+
+            @Override
+            public StateStore build() {
+                return new InMemoryTopKKeyValueStore<>(ranker.comparator(), timeWindows.sizeMs*10, TOP_K_NAME, ranker.limit());
+            }
+
+            @Override
+            public Map<String, String> logConfig() {
+                return null;
+            }
+
+            @Override
+            public boolean loggingEnabled() {
+                return false;
+            }
+
+            @Override
+            public String name() {
+                return TOP_K_NAME;
+            }
+        });
+        joinedStream.getInternalKStream().process(new ProcessorSupplier<Long, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<Stock, Stock>>>, Void, Void>() {
+            @Override
+            public Processor<Long, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<Stock, Stock>>>, Void, Void> get() {
+                return new TopKCAProcessorNotWindowed(TOP_K_NAME, annotationAwareTimeWindows, applicationSupplier, props);
+            }
+        }, TOP_K_NAME);
 
         KafkaStreams streams = new KafkaStreams(builder.build(), props);
 
