@@ -96,7 +96,7 @@ public class KCOSQAGPS {
         annotatedRecordsState.withLoggingDisabled();
 
 
-        ConstraintFactory<ValueAndTimestamp<GPS>> speedConstraintGPSValueFactory = new SpeedConstraintGPSValueFactory(0.0001/constraintStrictness, -0.0001/constraintStrictness);
+        ConstraintFactory<ValueAndTimestamp<GPS>> speedConstraintGPSValueFactory = new SpeedConstraintGPSValueFactory(0.001/constraintStrictness, -0.001/constraintStrictness);
         KStream<String, ValueAndTimestamp<GPS>> aggregatedStream = GPSKStream
                 .transformValues(new ValueTransformerSupplier<>() {
                     @Override

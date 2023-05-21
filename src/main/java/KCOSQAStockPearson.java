@@ -97,7 +97,7 @@ public class KCOSQAStockPearson {
         annotatedRecordsState.withLoggingDisabled();
 
 
-        ConstraintFactory<ValueAndTimestamp<Stock>> speedConstraintStockValueFactory = new SpeedConstraintStockValueFactory(0.0000000001/constraintStrictness, -0.0000000001/constraintStrictness);
+        ConstraintFactory<ValueAndTimestamp<Stock>> speedConstraintStockValueFactory = new SpeedConstraintStockValueFactory(0.00000001/constraintStrictness, -0.00000001/constraintStrictness);
         KStream<String, ValueAndTimestamp<Stock>> aggregatedStream = stockKStream
                 .transformValues(new ValueTransformerSupplier<>() {
                     @Override

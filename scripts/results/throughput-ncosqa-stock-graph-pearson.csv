@@ -1,2 +1,0 @@
-"ExperimentID","PercentageOfInc","ConstraintStrictness","WindowSizeMs","WindowSlideMs","StartTimeMs","CurrentTimeMs","NumberOfEvents","AvgMemory","MaxMemory","AvgCPU","MaxCPU","NumberOfInconsistencies"
-"stock-graph-pearson-9eaf9351-223e-4978-9dfb-4a455307427f","0","1","864000000","432000000","1684614596014","1684614654555","19001","3070509103","3263168512","0.916272558865544","0.9183327613439365","937345"

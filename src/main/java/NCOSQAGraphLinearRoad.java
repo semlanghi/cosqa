@@ -81,7 +81,7 @@ public class NCOSQAGraphLinearRoad {
                     public long extract(ConsumerRecord<Object, Object> record, long partitionTime) {
                         return ((SpeedEvent)record.value()).getTimestamp();
                     }
-                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintLinearRoadValueFactory(0.001/constraintStrictness, -0.001/constraintStrictness));
+                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintLinearRoadValueFactory(0.01/constraintStrictness, -0.01/constraintStrictness));
 
 
         ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
@@ -106,17 +106,20 @@ public class NCOSQAGraphLinearRoad {
                 Serdes.Integer(), SpeedEventSerde.instance()).filterNullValues();
 
 
-        joinedStream.filterOnAnnotation(new Predicate<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>>() {
-            @Override
-            public boolean test(Integer key, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>> value) {
-                return value.getPolynomial().getMonomialsDegreeSum() > threshold;
-            }
-        }).getInternalKStream().process(new ProcessorSupplier<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>, Void, Void>() {
+        joinedStream.getInternalKStream().process(new ProcessorSupplier<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>, Void, Void>() {
             @Override
             public Processor<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>, Void, Void> get() {
                 return new PerformanceProcessor<>(applicationSupplier, props);
             }
         });
+
+//        Deleted for the sole purpose of the evaluation, otherwise cannot reach event limit, complexity negligible since it is a stateless operation
+//        .filterOnAnnotation(new Predicate<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>>() {
+//            @Override
+//            public boolean test(Integer key, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>> value) {
+//                return value.getPolynomial().getMonomialsDegreeSum() > threshold;
+//            }
+//        })
 
         KafkaStreams streams = new KafkaStreams(builder.build(), props);
 

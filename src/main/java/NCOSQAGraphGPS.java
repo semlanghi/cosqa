@@ -84,7 +84,7 @@ public class NCOSQAGraphGPS {
                     public long extract(ConsumerRecord<Object, Object> record, long partitionTime) {
                         return ((GPS)record.value()).timestamp();
                     }
-                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintGPSValueFactory(0.0001/constraintStrictness, -0.0001/constraintStrictness));
+                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintGPSValueFactory(0.001/constraintStrictness, -0.001/constraintStrictness));
 
 
         ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);

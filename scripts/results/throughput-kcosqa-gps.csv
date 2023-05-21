@@ -1,2 +1,0 @@
-"ExperimentID","PercentageOfInc","ConstraintStrictness","WindowSizeMs","WindowSlideMs","StartTimeMs","CurrentTimeMs","NumberOfEvents","AvgMemory","MaxMemory","AvgCPU","MaxCPU","NumberOfInconsistencies"
-"4c8586c7-909b-4015-89fc-4a1b628a50ba","0","1","10","5","1684614747013","1684614837673","19001","1090519040","1090519040","0.8573990505586719","0.8594441913632159","742"

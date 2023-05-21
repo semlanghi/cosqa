@@ -107,7 +107,7 @@ public class KCOSQALinearRoad {
         annotatedRecordsState.withLoggingDisabled();
 
 
-        ConstraintFactory<ValueAndTimestamp<SpeedEvent>> speedConstraintSpeedEventValueFactory = new SpeedConstraintLinearRoadValueFactory(0.001/constraintStrictness, -0.001/constraintStrictness);
+        ConstraintFactory<ValueAndTimestamp<SpeedEvent>> speedConstraintSpeedEventValueFactory = new SpeedConstraintLinearRoadValueFactory(0.01/constraintStrictness, -0.01/constraintStrictness);
         KStream<Long, ValueAndTimestamp<SpeedEvent>> aggregatedStream = SpeedEventKStream
                 .transformValues(new ValueTransformerSupplier<>() {
                     @Override
@@ -218,13 +218,13 @@ public class KCOSQALinearRoad {
                             return true;
                         else return false;
                     }
-                })
-                .filter(new Predicate<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>>() {
-                    @Override
-                    public boolean test(Integer key, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>> value) {
-                        return value.getPolynomial().getMonomialsDegreeSum() > threshold;
-                    }
                 });
+//                .filter(new Predicate<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>>() {
+//                    @Override
+//                    public boolean test(Integer key, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>> value) {
+//                        return value.getPolynomial().getMonomialsDegreeSum() > threshold;
+//                    }
+//                });
 
         joinedStream.process(new ProcessorSupplier<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>, Void, Void>() {
             @Override
