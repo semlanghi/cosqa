@@ -11,7 +11,7 @@
 
 MEMORY="15g"
 
-for ((z=1; z<=1; z++)); do
+for ((z=1; z<=3; z++)); do
 
   echo "Comparative Evaluation on Window Size/Slide"
   constraint_strictness=(1)
