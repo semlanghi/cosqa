@@ -1,4 +1,5 @@
 scripts/*.out
+scripts/results/*
 target/
 
 .idea/

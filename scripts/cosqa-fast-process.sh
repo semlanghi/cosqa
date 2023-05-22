@@ -40,6 +40,9 @@ for ((i=0; i<${#name_experiment[@]}; i++)); do
                     topic="linearroad-nrecords-$3"
                     java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"LinearRoad "$cs" 0 "$((ws*1000))" $(((ws/wssf)*1000)) "$1" "$2" $(($2*2)) "$topic" &> ${name_experiment[$i]}-linearroad.out &
                     wait
+                    topic="stocks-nrecords-$3"
+                    java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"StockCombo "$cs" 0 "$((ws*1000))" $(((ws/wssf)*1000)) "$1" "$(($2/2))" $(($2*2)) "$topic" &> ${name_experiment[$i]}-stock-combo.out &
+                    wait
                 done
             done
         done
@@ -47,7 +50,7 @@ for ((i=0; i<${#name_experiment[@]}; i++)); do
 done
 
 echo "Detailed Evaluation on Constraint Strictness"
-constraint_strictness=(10 100 1000)
+constraint_strictness=(2 5 10)
 window_size=(100)
 window_size_slide_factor=(5)
 
@@ -66,10 +69,14 @@ for ((i=0; i<${#name_experiment[@]}; i++)); do
                 for ((j=1; j<=1; j++)); do
                     echo "Iteration $j"
                     topic="reviews-nrecords-$3"
-                    java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"Review "$cs" 0 "$((ws*1000))" $(((ws/wssf)*1000)) "$1" "$(($2/2))" $(($2*2)) "$topic" &> ${name_experiment[$i]}-review.out &
+                    java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"Review "$cs" 0 "$((ws*1000))" $(((ws/wssf)*1000)) "$1" "$(($2/constraint_strictness))" $(($2*2)) "$topic" &> ${name_experiment[$i]}-review.out &
                     wait
                     topic="gps-nrecords-$3"
-                    java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"GPS "$cs" 0 "$ws" $((ws/wssf)) "$1" "$(($2/20))" $(($2*2)) "$topic" &> ${name_experiment[$i]}-gps.out &
+                    java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"GPS "$cs" 0 "$ws" $((ws/wssf)) "$1" "$(($2/constraint_strictness))" $(($2*2)) "$topic" &> ${name_experiment[$i]}-gps.out &
+                    wait
+                    topic="stocks-nrecords-$3"
+                    cs2=$((constraint_strictness*2))
+                    java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"StockCombo "$cs" 0 "$((ws*1000))" $(((ws/wssf)*1000)) "$1" "$(($2/cs2))" $(($2*2)) "$topic" &> ${name_experiment[$i]}-stock-combo.out &
                     wait
                 done
             done
@@ -98,7 +105,8 @@ for ((i=0; i<${#name_experiment[@]}; i++)); do
                 for ((j=1; j<=1; j++)); do
                     echo "Iteration $j"
                     topic="linearroad-nrecords-$3"
-                    java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"LinearRoad 1 "$cs" "$((ws*1000))" $(((ws/wssf)*1000)) "$1" "$(($2/2))" $(($2*2)) "$topic" &> ${name_experiment[$i]}-linearroad.out &
+                    ip2=$((incons_perc/10))
+                    java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"LinearRoad 1 "$cs" "$((ws*1000))" $(((ws/wssf)*1000)) "$1" "$(($2/ip2))" $(($2*2)) "$topic" &> ${name_experiment[$i]}-linearroad.out &
                     wait
                 done
             done
