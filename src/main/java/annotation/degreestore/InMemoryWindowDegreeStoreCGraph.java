@@ -32,7 +32,7 @@ public class InMemoryWindowDegreeStoreCGraph<K,V> implements InMemoryWindowDegre
     private final ConstraintFactory<ValueAndTimestamp<V>> constraintFactory;
     private final long windowSlide;
     private final long allowedLateness = 0;
-    private final long cleanUpCounterMax = 100000;
+    private final long cleanUpCounterMax = 1000;
     private Map<K, Integer> cleanUpCounter;
     private Windows<TimeWindow> timeWindowWindows;
 

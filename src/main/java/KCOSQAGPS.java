@@ -6,6 +6,7 @@ import annotation.polynomial.Monomial;
 import gps.GPS;
 import gps.GPSSerde;
 import gps.SpeedConstraintGPSValueFactory;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.config.TopicConfig;
