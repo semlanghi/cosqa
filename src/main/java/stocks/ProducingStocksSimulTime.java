@@ -50,7 +50,7 @@ public class ProducingStocksSimulTime {
                             Pair<Pair<Long, Double>, Pair<Long, Double>> pair = splitters[j].read();
 
                             if (pair != null) {
-                                Stock read = new Stock(directoryListing[j].getName().charAt(0), pair.getRight().getRight(), i * Duration.ofDays(1).toMillis());
+                                Stock read = new Stock(directoryListing[j].getName().charAt(0), pair.getRight().getRight(), i * Duration.ofMillis(1000).toMillis());
 //                                lastRegisteredTimestamp[j] = read.ts;
 //                                read.addTimestamp(startTimestamp[j]);
 
@@ -79,7 +79,7 @@ public class ProducingStocksSimulTime {
                                 Pair<Pair<Long, Double>, Pair<Long, Double>> pair = splitters[j].read();
                                 if (pair != null) {
                                     Character name = directoryListing[j].getName().charAt(0);
-                                    Stock read = new Stock(name, pair.getRight().getRight(), i * Duration.ofDays(1).toMillis());
+                                    Stock read = new Stock(name, pair.getRight().getRight(), i * Duration.ofMillis(1000).toMillis());
                                     producer.send(new ProducerRecord<>(topic, String.valueOf(name), read));
                                 } else {
                                     splitters[j].close();

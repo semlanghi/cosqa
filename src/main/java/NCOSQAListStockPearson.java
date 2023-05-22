@@ -76,7 +76,7 @@ public class NCOSQAListStockPearson {
                     public long extract(ConsumerRecord<Object, Object> record, long partitionTime) {
                         return ((Stock)record.value()).getTs();
                     }
-                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintStockValueFactory(0.000001/constraintStrictness, -0.000001/constraintStrictness));
+                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintStockValueFactory(0.1/constraintStrictness, -0.1/constraintStrictness));
 
 
         ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);

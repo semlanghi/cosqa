@@ -14,8 +14,8 @@ MEMORY="15g"
 
 echo "Comparative Evaluation on Window Size/Slide"
 constraint_strictness=(1)
-window_size=(100 500 1000 5000 10000)
-window_size_slide_factor=(2 5 10)
+window_size=(10 100 1000 10000)
+window_size_slide_factor=(2 5)
 
 
 name_experiment=("KCOSQA")
@@ -32,16 +32,16 @@ for ((i=0; i<${#name_experiment[@]}; i++)); do
                 for ((j=1; j<=3; j++)); do
                     echo "Iteration $j"
                     topic="reviews-nrecords-$3"
-                    java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"Review "$cs" 0 "$((ws*86400000))" $(((ws/wssf)*86400000)) "$1" "$2" $(($2*2)) "$topic" &> ${name_experiment[$i]}-review.out &
+                    java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"Review "$cs" 0 "$((ws*1000))" $(((ws/wssf)*1000)) "$1" "$2" $(($2*2)) "$topic" &> ${name_experiment[$i]}-review.out &
                     wait
                     topic="gps-nrecords-$3"
                     java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"GPS "$cs" 0 "$ws" $((ws/wssf)) "$1" "$2" $(($2*2)) "$topic" &> ${name_experiment[$i]}-gps.out &
                     wait
                     topic="stocks-nrecords-$3"
-                    java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"StockPearson "$cs" 0 "$((ws*86400000))" $(((ws/wssf)*86400000)) "$1" "$(($2/5))" $(($2*2)) "$topic" &> ${name_experiment[$i]}-stock-pearson.out &
+                    java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"StockPearson "$cs" 0 "$((ws*1000))" $(((ws/wssf)*1000)) "$1" "$(($2/20))" $(($2*2)) "$topic" &> ${name_experiment[$i]}-stock-pearson.out &
                     wait
                     topic="stocks-nrecords-$3"
-                    java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"StockCombo "$cs" 0 "$((ws*86400000))" $(((ws/wssf)*86400000)) "$1" "$2" $(($2*2)) "$topic" &> ${name_experiment[$i]}-stock-combo.out &
+                    java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"StockCombo "$cs" 0 "$((ws*1000))" $(((ws/wssf)*1000)) "$1" "$2" $(($2*2)) "$topic" &> ${name_experiment[$i]}-stock-combo.out &
                     wait
                     topic="linearroad-nrecords-$3-incons-0"
                     java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"LinearRoad "$cs" 0 "$((ws*1000))" $(((ws/wssf)*1000)) "$1" "$2" $(($2*2)) "$topic" &> ${name_experiment[$i]}-linearroad.out &

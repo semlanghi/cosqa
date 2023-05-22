@@ -54,7 +54,7 @@ public class ProducingReviewsSimulTime {
                     for (long i = 0; i < nrecords; i++) {
                         for (int j=0; j < directoryListing.length; j++) {
                             if (splitters[j] != null){
-                                Review read = splitters[j].read(Duration.ofDays(1).toMillis()*i);
+                                Review read = splitters[j].read(Duration.ofMillis(1000).toMillis()*i);
 
                                 if (read!=null) {
 //                                    lastRegisteredTimestamp[j] = read.timestamp();
@@ -82,7 +82,7 @@ public class ProducingReviewsSimulTime {
                         for (int j=0; j < directoryListing.length; j++) {
                             if (splitters[j] != null){
                                 terminated = false;
-                                Review read = splitters[j].read(Duration.ofDays(1).toMillis()*i);
+                                Review read = splitters[j].read(Duration.ofMillis(1000).toMillis()*i);
                                 if (read!=null) {
                                     producer.send(new ProducerRecord<>("sample-topic", read.title, read));
                                 } else {

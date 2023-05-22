@@ -13,7 +13,7 @@ import java.util.Properties;
 import java.util.UUID;
 
 public class CountingConsumerStock {
-    private static final String TOPIC = "stocks-nrecords-25000000";
+    private static final String TOPIC = "stocks-nrecords-2000000";
     private static final String BOOTSTRAP_SERVERS = "localhost:9092";
     private static final String GROUP_ID = UUID.randomUUID().toString();
 

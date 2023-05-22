@@ -15,7 +15,7 @@ import java.util.Properties;
 import java.util.UUID;
 
 public class CountingConsumerGPS {
-    private static final String TOPIC = "gps-nrecords-25000000";
+    private static final String TOPIC = "gps-nrecords-2000000";
     private static final String BOOTSTRAP_SERVERS = "localhost:9092";
     private static final String GROUP_ID = UUID.randomUUID().toString();
 
