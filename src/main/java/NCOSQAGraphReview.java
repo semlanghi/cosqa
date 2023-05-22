@@ -81,7 +81,7 @@ public class NCOSQAGraphReview {
                     public long extract(ConsumerRecord<Object, Object> record, long partitionTime) {
                         return ((Review)record.value()).timestamp();
                     }
-                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintReviewValueFactory(0.0000001/constraintStrictness, -0.0000001/constraintStrictness));
+                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintReviewValueFactory(0.09/constraintStrictness, -0.09/constraintStrictness));
 
 
         ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);

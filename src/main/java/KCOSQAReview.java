@@ -95,7 +95,7 @@ public class KCOSQAReview {
         annotatedRecordsState.withLoggingDisabled();
 
 
-        ConstraintFactory<ValueAndTimestamp<Review>> speedConstraintReviewValueFactory = new SpeedConstraintReviewValueFactory(0.0000001/constraintStrictness, -0.0000001/constraintStrictness);
+        ConstraintFactory<ValueAndTimestamp<Review>> speedConstraintReviewValueFactory = new SpeedConstraintReviewValueFactory(0.09/constraintStrictness, -0.09/constraintStrictness);
         KStream<String, ValueAndTimestamp<Review>> aggregatedStream = ReviewKStream
                 .transformValues(new ValueTransformerSupplier<>() {
                     @Override
