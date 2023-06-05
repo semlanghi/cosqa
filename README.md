@@ -33,14 +33,14 @@ Run the following script to create and populate Kafka topics, where `nrecords` i
 
 
 
-Run the following script to start the experiments, where `nrecords_to_process` are the number of records that each query needs to process in each experiment.
+Run the following script to start the experiments, where `nrecords_to_process` are the number of records that each query needs to process in each experiment, and `RESULTS_DIR` is the directory where to put the results.
 
 ```
-.PROJECT_DIR/scripts/cosqa-run-experiments.sh /Users/samuelelanghi/Documents/projects/cosqa/scripts/results/ nrecords_to_process granularity
+.PROJECT_DIR/scripts/cosqa-run-experiments.sh RESULTS_DIR nrecords_to_process granularity
 ```
 This other script runs KCOSQA experiments
 ```
-.PROJECT_DIR/scripts/kcosqa-process.sh /Users/samuelelanghi/Documents/projects/cosqa/scripts/results/ nrecords_to_process granularity
+.PROJECT_DIR/scripts/kcosqa-process.sh RESULTS_DIR nrecords_to_process granularity
 ```
 NOTE: `granularity` is a debug parameter, and it should always be bigger than `nrecords_to_process` when running the experiments. 
 
