@@ -38,10 +38,15 @@ Run the following script to start the experiments, where `nrecords_to_process` a
 ```
 .PROJECT_DIR/scripts/cosqa-run-experiments.sh /Users/samuelelanghi/Documents/projects/cosqa/scripts/results/ nrecords_to_process granularity
 ```
+This other script runs KCOSQA experiments
+```
+.PROJECT_DIR/scripts/kcosqa-process.sh /Users/samuelelanghi/Documents/projects/cosqa/scripts/results/ nrecords_to_process granularity
+```
 NOTE: `granularity` is a debug parameter, and it should always be bigger than `nrecords_to_process` when running the experiments. 
 
+The baseline experiments can be executed through the `run-inca.sh` script, located here [repo](https://github.com/semlanghi/INCA/blob/master/IQ/scripts/run-inca.sh), with the same argument as the previous two scripts (keep in mind that the baseline is far slower, thus it is reasonable to use a reduced number of events).
 
-In the following, the performance results in terms of throughput, time percentage with respect to annotation and consumption overhead, and scalability with respect to the number of constraints used. 
+In the following, the performance results in terms of throughput, time percentage with respect to annotation and consumption overhead, and scalability with respect to the number of constraints used.
 
 ![](throughput.png)
 ![](annotatointime.png)
