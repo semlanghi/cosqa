@@ -121,11 +121,11 @@ public class TopKCAProcessorNotWindowedNI<K,V> extends ContextualProcessor<K, V,
             if (count%granularity==0 && granularity!=-1){
                 register();
             }
-            if(count > maxEvents && !finished){
-                finished = true;
-                register();
-                shutdownHook.close();
-            }
+//            if(count > maxEvents && !finished){
+//                finished = true;
+//                register();
+//                shutdownHook.close();
+//            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -170,6 +170,11 @@ public class TopKCAProcessorNotWindowedNI<K,V> extends ContextualProcessor<K, V,
 
     @Override
     public void close() {
+        try {
+            register();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         topKStore.close();
     }
 

@@ -7,10 +7,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.processor.TimestampExtractor;
@@ -29,6 +26,7 @@ import topkstreaming.Ranker;
 import topkstreaming.TopKCAProcessorNotWindowed;
 import utils.ApplicationSupplier;
 import utils.ExperimentConfig;
+import utils.PerformanceInputTransformerNotAnnotated;
 
 import java.time.Duration;
 import java.util.Map;
@@ -76,6 +74,7 @@ public class NCOSQAListStockCombo {
                 .after(Duration.ZERO).before(size);
         String topic = args[7];
         CADistanceBasedRanker ranker = new CADistanceBasedRanker(3, Ranker.Order.DESCENDING);
+        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
 
         StreamsBuilder builder = new StreamsBuilder();
 
@@ -85,10 +84,9 @@ public class NCOSQAListStockCombo {
                     public long extract(ConsumerRecord<Object, Object> record, long partitionTime) {
                         return ((Stock)record.value()).getTs();
                     }
-                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintStockValueFactory(0.1/constraintStrictness, -0.1/constraintStrictness));
+                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintStockValueFactory(0.1/constraintStrictness, -0.1/constraintStrictness), applicationSupplier, props);
 
 
-        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
 
         AnnKStream<Long, Stock> windowedStockAnnKStream = annotatedKStream
                 .selectKey(new KeyValueMapper<String, ValueAndTimestamp<Stock>, Long>() {
@@ -98,6 +96,9 @@ public class NCOSQAListStockCombo {
             }
         });
 
+        JoinWindows joinWindows1 = JoinWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(50000), Duration.ofMillis(100000))
+                .after(Duration.ZERO).before(Duration.ofMillis(100000));
+
         AnnKStream<Long, Pair<Stock, Stock>> joinedStream = windowedStockAnnKStream.join(windowedStockAnnKStream, new ValueJoiner<Stock, Stock, Pair<Stock, Stock>>() {
                     @Override
                     public Pair<Stock, Stock> apply(Stock value1, Stock value2) {
@@ -106,7 +107,7 @@ public class NCOSQAListStockCombo {
                         return new ImmutablePair<>(value1, value2);
                     }
                 },
-                joinWindows,
+                joinWindows1,
                 Serdes.Long(), StockSerde.instance()).filterNullValues();
 //
 //        joinedStream.getInternalKStream().process(new ProcessorSupplier<Long, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<Stock, Stock>>>, Void, Void>() {
@@ -117,53 +118,53 @@ public class NCOSQAListStockCombo {
 //        });
 
 
-        builder.addStateStore(new StoreBuilder<>() {
-            @Override
-            public StoreBuilder<StateStore> withCachingEnabled() {
-                return null;
-            }
-
-            @Override
-            public StoreBuilder<StateStore> withCachingDisabled() {
-                return null;
-            }
-
-            @Override
-            public StoreBuilder<StateStore> withLoggingEnabled(Map<String, String> config) {
-                return null;
-            }
-
-            @Override
-            public StoreBuilder<StateStore> withLoggingDisabled() {
-                return null;
-            }
-
-            @Override
-            public StateStore build() {
-                return new InMemoryTopKKeyValueStore<>(ranker.comparator(), timeWindows.sizeMs*10, TOP_K_NAME, ranker.limit());
-            }
-
-            @Override
-            public Map<String, String> logConfig() {
-                return null;
-            }
-
-            @Override
-            public boolean loggingEnabled() {
-                return false;
-            }
-
-            @Override
-            public String name() {
-                return TOP_K_NAME;
-            }
-        });
-        joinedStream.getInternalKStream().process(new ProcessorSupplier<Long, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<Stock, Stock>>>, Void, Void>() {
-            @Override
-            public Processor<Long, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<Stock, Stock>>>, Void, Void> get() {
-                return new TopKCAProcessorNotWindowed(TOP_K_NAME, annotationAwareTimeWindows, applicationSupplier, props);
-            }
-        }, TOP_K_NAME);
+//        builder.addStateStore(new StoreBuilder<>() {
+//            @Override
+//            public StoreBuilder<StateStore> withCachingEnabled() {
+//                return null;
+//            }
+//
+//            @Override
+//            public StoreBuilder<StateStore> withCachingDisabled() {
+//                return null;
+//            }
+//
+//            @Override
+//            public StoreBuilder<StateStore> withLoggingEnabled(Map<String, String> config) {
+//                return null;
+//            }
+//
+//            @Override
+//            public StoreBuilder<StateStore> withLoggingDisabled() {
+//                return null;
+//            }
+//
+//            @Override
+//            public StateStore build() {
+//                return new InMemoryTopKKeyValueStore<>(ranker.comparator(), timeWindows.sizeMs*10, TOP_K_NAME, ranker.limit());
+//            }
+//
+//            @Override
+//            public Map<String, String> logConfig() {
+//                return null;
+//            }
+//
+//            @Override
+//            public boolean loggingEnabled() {
+//                return false;
+//            }
+//
+//            @Override
+//            public String name() {
+//                return TOP_K_NAME;
+//            }
+//        });
+//        joinedStream.getInternalKStream().process(new ProcessorSupplier<Long, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<Stock, Stock>>>, Void, Void>() {
+//            @Override
+//            public Processor<Long, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<Stock, Stock>>>, Void, Void> get() {
+//                return new TopKCAProcessorNotWindowed(TOP_K_NAME, annotationAwareTimeWindows, applicationSupplier, props);
+//            }
+//        }, TOP_K_NAME);
 
         KafkaStreams streams = new KafkaStreams(builder.build(), props);
 

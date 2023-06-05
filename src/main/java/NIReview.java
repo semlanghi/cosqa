@@ -1,29 +1,21 @@
 import annotation.AnnotationAwareTimeWindows;
-import annotation.ConsistencyAnnotatedRecord;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.processor.TimestampExtractor;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorSupplier;
 import org.apache.kafka.streams.state.StoreBuilder;
-import org.apache.kafka.streams.state.ValueAndTimestamp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reviews.Review;
 import reviews.ReviewSerde;
 import topkstreaming.*;
-import utils.ApplicationSupplier;
-import utils.ExperimentConfig;
-import utils.PerformanceProcessor;
-import utils.PerformanceProcessorNI;
+import utils.*;
 
 import java.time.Duration;
 import java.util.Map;
@@ -69,6 +61,8 @@ public class NIReview {
         JoinWindows joinWindows = JoinWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(timeWindows.size()/2), size)
                 .after(Duration.ZERO).before(size);
         String topic = args[7];
+        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
+
 
         StreamsBuilder builder = new StreamsBuilder();
         KStream<String, Review> annotatedKStream = builder
@@ -77,10 +71,14 @@ public class NIReview {
                     public long extract(ConsumerRecord<Object, Object> record, long partitionTime) {
                         return ((Review)record.value()).timestamp();
                     }
-                }, Topology.AutoOffsetReset.EARLIEST));
+                }, Topology.AutoOffsetReset.EARLIEST)).transform(new TransformerSupplier<String, Review, KeyValue<String, Review>>() {
+                    @Override
+                    public Transformer<String, Review, KeyValue<String, Review>> get() {
+                        return new PerformanceInputTransformerNotAnnotated(applicationSupplier, props);
+                    }
+                });
 
 
-        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
 
 //        annotatedKStream.process(new ProcessorSupplier<String, Review, Void, Void>() {
 //            @Override

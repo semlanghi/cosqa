@@ -3,9 +3,6 @@ import annotation.ConsistencyAnnotatedRecord;
 import annotation.constraint.ConstraintFactory;
 import annotation.constraint.StreamingConstraint;
 import annotation.polynomial.Monomial;
-import gps.GPS;
-import gps.GPSSerde;
-import gps.SpeedConstraintGPSValueFactory;
 import linearroad.SpeedConstraintLinearRoadValueFactory;
 import linearroad.SpeedEvent;
 import linearroad.SpeedEventSerde;
@@ -19,34 +16,22 @@ import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.processor.ProcessorContext;
-import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.processor.TimestampExtractor;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorSupplier;
-import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.*;
 import org.apache.kafka.streams.state.internals.InMemoryKeyValueBytesStoreSupplier;
 import org.apache.kafka.streams.state.internals.ValueAndTimestampSerde;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import stocks.Stock;
-import stocks.StockSerde;
-import topkstreaming.CADistanceBasedRanker;
-import topkstreaming.InMemoryTopKKeyValueStore;
-import topkstreaming.Ranker;
-import topkstreaming.TopKCAProcessor;
-import utils.ApplicationSupplier;
-import utils.ExperimentConfig;
-import utils.PerformanceProcessor;
+import utils.*;
 
 import java.time.Duration;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 
 import static annotation.AnnKStream.ANNOTATE_NAME;
-import static annotation.AnnWindowedTableImpl.TOP_K_NAME;
 
 
 public class KCOSQALinearRoad {
@@ -87,6 +72,8 @@ public class KCOSQALinearRoad {
                 .after(Duration.ZERO).before(size);
         String topic = args[7] + "-incons-" +props.getProperty(ExperimentConfig.INCONSISTENCY_PERCENTAGE);
         int threshold = 1;
+        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
+
 
         //Building a SpeedEvent stream within the ValueAndTimestamp Object
         StreamsBuilder builder = new StreamsBuilder();
@@ -190,7 +177,8 @@ public class KCOSQALinearRoad {
                     }
                 });
 
-        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
+        JoinWindows joinWindows1 = JoinWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(50000), Duration.ofMillis(100000))
+                .after(Duration.ZERO).before(Duration.ofMillis(100000));
 
         //Processing pipeline of the annotated stream
         KStream<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<SpeedEvent>>> annotatedTimestampedKStream = annotatedKStream
@@ -208,9 +196,15 @@ public class KCOSQALinearRoad {
                     ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>> valueAndTimestamp = ValueAndTimestamp.make(internalValueJoiner.apply(value1.getWrappedRecord().value(), value2.getWrappedRecord().value())
                             , Math.max(value1.getWrappedRecord().timestamp(), value2.getWrappedRecord().timestamp()));
                     return new ConsistencyAnnotatedRecord<>(value1.getPolynomial().times(value2.getPolynomial()), valueAndTimestamp);
-                }, joinWindows, StreamJoined.with(Serdes.Integer(), ConsistencyAnnotatedRecord.serde(SpeedEventSerde.instance()), ConsistencyAnnotatedRecord.serde(SpeedEventSerde.instance()))
-                        .withThisStoreSupplier(Stores.inMemoryWindowStore("join1"+ UUID.randomUUID(), Duration.ofMillis(joinWindows.size() + joinWindows.gracePeriodMs()), Duration.ofMillis(joinWindows.size()), true))
-                        .withOtherStoreSupplier(Stores.inMemoryWindowStore("join2"+UUID.randomUUID(), Duration.ofMillis(joinWindows.size() + joinWindows.gracePeriodMs()), Duration.ofMillis(joinWindows.size()), true)))
+                }, joinWindows1, StreamJoined.with(Serdes.Integer(), ConsistencyAnnotatedRecord.serde(SpeedEventSerde.instance()), ConsistencyAnnotatedRecord.serde(SpeedEventSerde.instance()))
+                        .withThisStoreSupplier(Stores.inMemoryWindowStore("join1"+ UUID.randomUUID(), Duration.ofMillis(joinWindows1.size() + joinWindows1.gracePeriodMs()), Duration.ofMillis(joinWindows1.size()), true))
+                        .withOtherStoreSupplier(Stores.inMemoryWindowStore("join2"+UUID.randomUUID(), Duration.ofMillis(joinWindows1.size() + joinWindows1.gracePeriodMs()), Duration.ofMillis(joinWindows1.size()), true)))
+                .transform(new TransformerSupplier<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>, KeyValue<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>>>() {
+                    @Override
+                    public Transformer<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>, KeyValue<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>>> get() {
+                        return new PerformanceInputInconsistencyTransformer<>(applicationSupplier, props);
+                    }
+                })
                 .filter(new Predicate<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>>() {
                     @Override
                     public boolean test(Integer key, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>> value) {

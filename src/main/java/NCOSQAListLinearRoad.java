@@ -10,10 +10,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.processor.TimestampExtractor;
 import org.apache.kafka.streams.processor.api.Processor;
@@ -24,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import utils.ApplicationSupplier;
 import utils.ExperimentConfig;
 import utils.PerformanceProcessor;
+import utils.PerformanceInputTransformerNotAnnotated;
 
 import java.time.Duration;
 import java.util.Properties;
@@ -70,6 +68,9 @@ public class NCOSQAListLinearRoad {
         String topic = args[7] + "-incons-" +props.getProperty(ExperimentConfig.INCONSISTENCY_PERCENTAGE);
         int threshold = 1;
 
+        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
+
+
 
         StreamsBuilder builder = new StreamsBuilder();
         AnnKStream<Long, SpeedEvent> annotatedKStream = AnnKStream.annotateListNotWindowed(builder
@@ -78,10 +79,9 @@ public class NCOSQAListLinearRoad {
                     public long extract(ConsumerRecord<Object, Object> record, long partitionTime) {
                         return ((SpeedEvent)record.value()).getTimestamp();
                     }
-                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintLinearRoadValueFactory(0.01/constraintStrictness, -0.01/constraintStrictness));
+                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintLinearRoadValueFactory(0.01/constraintStrictness, -0.01/constraintStrictness), applicationSupplier, props);
 
 
-        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
 
         AnnKStream<Integer, SpeedEvent> windowedSpeedEventAnnKStream = annotatedKStream
                 .selectKey(new KeyValueMapper<Long, ValueAndTimestamp<SpeedEvent>, Integer>() {
@@ -91,6 +91,9 @@ public class NCOSQAListLinearRoad {
             }
         });
 
+        JoinWindows joinWindows1 = JoinWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(50000), Duration.ofMillis(100000))
+                .after(Duration.ZERO).before(Duration.ofMillis(100000));
+
         AnnKStream<Integer, Pair<SpeedEvent, SpeedEvent>> joinedStream = windowedSpeedEventAnnKStream.join(windowedSpeedEventAnnKStream, new ValueJoiner<SpeedEvent, SpeedEvent, Pair<SpeedEvent, SpeedEvent>>() {
                     @Override
                     public Pair<SpeedEvent, SpeedEvent> apply(SpeedEvent value1, SpeedEvent value2) {
@@ -99,16 +102,16 @@ public class NCOSQAListLinearRoad {
                         return new ImmutablePair<>(value1, value2);
                     }
                 },
-                joinWindows,
+                joinWindows1,
                 Serdes.Integer(), SpeedEventSerde.instance()).filterNullValues();
 
 
-        joinedStream.getInternalKStream().process(new ProcessorSupplier<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>, Void, Void>() {
-            @Override
-            public Processor<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>, Void, Void> get() {
-                return new PerformanceProcessor<>(applicationSupplier, props);
-            }
-        });
+//        joinedStream.getInternalKStream().process(new ProcessorSupplier<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>, Void, Void>() {
+//            @Override
+//            public Processor<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>, Void, Void> get() {
+//                return new PerformanceProcessor<>(applicationSupplier, props);
+//            }
+//        });
 
 //        Deleted for the sole purpose of the evaluation, otherwise cannot reach event limit, complexity negligible since it is a stateless operation
 //        .filterOnAnnotation(new Predicate<Integer, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<SpeedEvent, SpeedEvent>>>>() {

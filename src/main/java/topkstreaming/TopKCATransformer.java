@@ -1,6 +1,7 @@
 package topkstreaming;
 
 import annotation.ConsistencyAnnotatedRecord;
+import annotation.polynomial.Monomial;
 import com.opencsv.CSVWriter;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.kstream.Windowed;
@@ -15,6 +16,7 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.util.Properties;
+import java.util.function.Predicate;
 
 public class TopKCATransformer<K,V> implements ValueTransformerWithKey<Windowed<K>, ConsistencyAnnotatedRecord<V>, Integer> {
 
@@ -112,20 +114,22 @@ public class TopKCATransformer<K,V> implements ValueTransformerWithKey<Windowed<
             memorySizeSum+=memorySize;
             cpuUtilizationSum+=cpuUtilization;
             numberOfInconsistencies += value.getPolynomial()
-                    .getMonomials().stream()
-                    .reduce(0L,
-                            (aLong, monomial) -> monomial.getCardinality() + aLong,
-                            Long::sum);
+                    .getMonomials().stream().filter(new Predicate<Monomial>() {
+                        @Override
+                        public boolean test(Monomial monomial) {
+                            return monomial.getCardinality()>0;
+                        }
+                    }).count();
 
             count++;
             if (count%granularity==0 && granularity!=-1){
                 register();
             }
-            if(count > maxEvents && !finished){
-                finished = true;
-                register();
-                shutdownHook.close();
-            }
+//            if(count > maxEvents && !finished){
+//                finished = true;
+//                register();
+//                shutdownHook.close();
+//            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -170,6 +174,11 @@ public class TopKCATransformer<K,V> implements ValueTransformerWithKey<Windowed<
 
     @Override
     public void close() {
+        try {
+            register();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         topKStore.close();
     }
 

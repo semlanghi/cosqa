@@ -2,11 +2,9 @@ import annotation.AnnotationAwareTimeWindows;
 import annotation.ConsistencyAnnotatedRecord;
 import annotation.constraint.ConstraintFactory;
 import annotation.constraint.StreamingConstraint;
-import annotation.polynomial.Monomial;
 import gps.GPS;
 import gps.GPSSerde;
 import gps.SpeedConstraintGPSValueFactory;
-import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.config.TopicConfig;
@@ -27,10 +25,10 @@ import org.slf4j.LoggerFactory;
 import topkstreaming.*;
 import utils.ApplicationSupplier;
 import utils.ExperimentConfig;
-import utils.PerformanceProcessor;
+import utils.PerformanceInputInconsistencyTransformer;
+import utils.PerformanceInputTransformerNotAnnotated;
 
 import java.time.Duration;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
@@ -77,6 +75,8 @@ public class KCOSQAGPS {
         JoinWindows joinWindows = JoinWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(timeWindows.size()/2), size)
                 .after(Duration.ZERO).before(size);
         String topic = args[7];
+
+        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
 
         //Building a GPS stream within the ValueAndTimestamp Object
         StreamsBuilder builder = new StreamsBuilder();
@@ -170,9 +170,14 @@ public class KCOSQAGPS {
                     public String apply(Windowed<ValueAndTimestamp<GPS>> key, ConsistencyAnnotatedRecord<ValueAndTimestamp<GPS>> value) {
                         return key.key().value().key();
                     }
+                }).transform(new TransformerSupplier<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<GPS>>, KeyValue<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<GPS>>>>() {
+                    @Override
+                    public Transformer<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<GPS>>, KeyValue<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<GPS>>>> get() {
+                        return new PerformanceInputInconsistencyTransformer<>(applicationSupplier, props);
+                    }
                 });
 
-        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
+
 
 //        annotatedKStream.process(new ProcessorSupplier<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<GPS>>, Void, Void>() {
 //            @Override

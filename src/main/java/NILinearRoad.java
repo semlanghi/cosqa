@@ -1,7 +1,4 @@
-import annotation.AnnKStream;
 import annotation.AnnotationAwareTimeWindows;
-import annotation.ConsistencyAnnotatedRecord;
-import linearroad.SpeedConstraintLinearRoadValueFactory;
 import linearroad.SpeedEvent;
 import linearroad.SpeedEventSerde;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -12,14 +9,10 @@ import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.kstream.*;
-import org.apache.kafka.streams.kstream.internals.TimeWindow;
 import org.apache.kafka.streams.processor.TimestampExtractor;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorSupplier;
-import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.Stores;
-import org.apache.kafka.streams.state.ValueAndTimestamp;
-import org.apache.kafka.streams.state.internals.ValueAndTimestampSerde;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import topkstreaming.CADistanceBasedRanker;
@@ -27,14 +20,11 @@ import topkstreaming.Ranker;
 import utils.ApplicationSupplier;
 import utils.ExperimentConfig;
 import utils.PerformanceProcessorNI;
+import utils.PerformanceInputTransformerNotAnnotated;
 
 import java.time.Duration;
-import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class NILinearRoad {
 
@@ -75,6 +65,8 @@ public class NILinearRoad {
                 .after(Duration.ZERO).before(size);
         String topic = args[7] + "-incons-" +props.getProperty(ExperimentConfig.INCONSISTENCY_PERCENTAGE);
         int threshold = 1;
+        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
+
 
         CADistanceBasedRanker ranker = new CADistanceBasedRanker(3, Ranker.Order.DESCENDING);
 
@@ -85,10 +77,14 @@ public class NILinearRoad {
                     public long extract(ConsumerRecord<Object, Object> record, long partitionTime) {
                         return ((SpeedEvent)record.value()).getTimestamp();
                     }
-                }, Topology.AutoOffsetReset.EARLIEST));
+                }, Topology.AutoOffsetReset.EARLIEST)).transform(new TransformerSupplier<Long, SpeedEvent, KeyValue<Long, SpeedEvent>>() {
+                    @Override
+                    public Transformer<Long, SpeedEvent, KeyValue<Long, SpeedEvent>> get() {
+                        return new PerformanceInputTransformerNotAnnotated(applicationSupplier, props);
+                    }
+                });
 
 
-        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
 
         KStream<Integer, SpeedEvent> windowedSpeedEventAnnKStream = annotatedKStream
                 .selectKey(new KeyValueMapper<Long, SpeedEvent, Integer>() {
@@ -109,7 +105,8 @@ public class NILinearRoad {
 //            }
 //        });
 
-
+        joinWindows = JoinWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(50000), Duration.ofMillis(100000))
+                .after(Duration.ZERO).before(Duration.ofMillis(100000));
 
         KStream<Integer, Pair<SpeedEvent, SpeedEvent>> joinedStream = windowedSpeedEventAnnKStream.join(windowedSpeedEventAnnKStream, new ValueJoiner<SpeedEvent, SpeedEvent, Pair<SpeedEvent, SpeedEvent>>() {
                     @Override
@@ -128,12 +125,12 @@ public class NILinearRoad {
                     }
                 });
 
-        joinedStream.process(new ProcessorSupplier<Integer, Pair<SpeedEvent, SpeedEvent>, Void, Void>() {
-            @Override
-            public Processor<Integer, Pair<SpeedEvent, SpeedEvent>, Void, Void> get() {
-                return new PerformanceProcessorNI<>(applicationSupplier, props);
-            }
-        });
+//        joinedStream.process(new ProcessorSupplier<Integer, Pair<SpeedEvent, SpeedEvent>, Void, Void>() {
+//            @Override
+//            public Processor<Integer, Pair<SpeedEvent, SpeedEvent>, Void, Void> get() {
+//                return new PerformanceProcessorNI<>(applicationSupplier, props);
+//            }
+//        });
 
         KafkaStreams streams = new KafkaStreams(builder.build(), props);
 

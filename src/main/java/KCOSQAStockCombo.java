@@ -2,8 +2,6 @@ import annotation.AnnotationAwareTimeWindows;
 import annotation.ConsistencyAnnotatedRecord;
 import annotation.constraint.ConstraintFactory;
 import annotation.constraint.StreamingConstraint;
-import annotation.polynomial.Monomial;
-import annotation.polynomial.Polynomial;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -16,10 +14,8 @@ import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.processor.TimestampExtractor;
-import org.apache.kafka.streams.processor.To;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorSupplier;
-import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.*;
 import org.apache.kafka.streams.state.internals.InMemoryKeyValueBytesStoreSupplier;
 import org.apache.kafka.streams.state.internals.ValueAndTimestampSerde;
@@ -29,10 +25,10 @@ import stocks.*;
 import topkstreaming.*;
 import utils.ApplicationSupplier;
 import utils.ExperimentConfig;
-import utils.PerformanceProcessor;
+import utils.PerformanceInputInconsistencyTransformer;
+import utils.PerformanceInputTransformerNotAnnotated;
 
 import java.time.Duration;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
@@ -78,6 +74,8 @@ public class KCOSQAStockCombo {
         JoinWindows joinWindows = JoinWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(timeWindows.size()/2), size)
                 .after(Duration.ZERO).before(size);
         String topic = args[7];
+        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
+
 
         //Building a stock stream within the ValueAndTimestamp Object
         StreamsBuilder builder = new StreamsBuilder();
@@ -172,14 +170,21 @@ public class KCOSQAStockCombo {
                     public String apply(Windowed<ValueAndTimestamp<Stock>> key, ConsistencyAnnotatedRecord<ValueAndTimestamp<Stock>> value) {
                         return key.key().value().getName().toString();
                     }
+                }).transform(new TransformerSupplier<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<Stock>>, KeyValue<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<Stock>>>>() {
+                    @Override
+                    public Transformer<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<Stock>>, KeyValue<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<Stock>>>> get() {
+                        return new PerformanceInputInconsistencyTransformer<>(applicationSupplier, props);
+                    }
                 });
 
-        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
 
 
 
 
         //Processing pipeline of the annotated stream
+
+        JoinWindows joinWindows1 = JoinWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(50000), Duration.ofMillis(100000))
+                .after(Duration.ZERO).before(Duration.ofMillis(100000));
         KStream<Long, ConsistencyAnnotatedRecord<ValueAndTimestamp<Stock>>> annotatedTimestampedKStream = annotatedKStream
                 .selectKey((key, value) -> value.getWrappedRecord().timestamp());
 
@@ -195,9 +200,9 @@ public class KCOSQAStockCombo {
             ValueAndTimestamp<Pair<Stock, Stock>> valueAndTimestamp = ValueAndTimestamp.make(internalValueJoiner.apply(value1.getWrappedRecord().value(), value2.getWrappedRecord().value())
                     , Math.max(value1.getWrappedRecord().timestamp(), value2.getWrappedRecord().timestamp()));
             return new ConsistencyAnnotatedRecord<>(value1.getPolynomial().times(value2.getPolynomial()), valueAndTimestamp);
-        }, joinWindows, StreamJoined.with(Serdes.Long(), ConsistencyAnnotatedRecord.serde(StockSerde.instance()), ConsistencyAnnotatedRecord.serde(StockSerde.instance()))
-                .withThisStoreSupplier(Stores.inMemoryWindowStore("join1"+ UUID.randomUUID(), Duration.ofMillis(joinWindows.size() + joinWindows.gracePeriodMs()), Duration.ofMillis(joinWindows.size()), true))
-                .withOtherStoreSupplier(Stores.inMemoryWindowStore("join2"+UUID.randomUUID(), Duration.ofMillis(joinWindows.size() + joinWindows.gracePeriodMs()), Duration.ofMillis(joinWindows.size()), true)))
+        }, joinWindows1, StreamJoined.with(Serdes.Long(), ConsistencyAnnotatedRecord.serde(StockSerde.instance()), ConsistencyAnnotatedRecord.serde(StockSerde.instance()))
+                .withThisStoreSupplier(Stores.inMemoryWindowStore("join1"+ UUID.randomUUID(), Duration.ofMillis(joinWindows1.size() + joinWindows1.gracePeriodMs()), Duration.ofMillis(joinWindows1.size()), true))
+                .withOtherStoreSupplier(Stores.inMemoryWindowStore("join2"+UUID.randomUUID(), Duration.ofMillis(joinWindows1.size() + joinWindows1.gracePeriodMs()), Duration.ofMillis(joinWindows1.size()), true)))
                 .filter(new Predicate<Long, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<Stock, Stock>>>>() {
                     @Override
                     public boolean test(Long key, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<Stock, Stock>>> value) {

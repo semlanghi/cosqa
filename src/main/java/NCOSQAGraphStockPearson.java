@@ -8,14 +8,9 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.processor.TimestampExtractor;
-import org.apache.kafka.streams.processor.api.Processor;
-import org.apache.kafka.streams.processor.api.ProcessorSupplier;
 import org.apache.kafka.streams.state.Stores;
 import org.apache.kafka.streams.state.ValueAndTimestamp;
 import org.slf4j.Logger;
@@ -25,7 +20,7 @@ import topkstreaming.CADistanceBasedRanker;
 import topkstreaming.Ranker;
 import utils.ApplicationSupplier;
 import utils.ExperimentConfig;
-import utils.PerformanceProcessor;
+import utils.PerformanceInputTransformerNotAnnotated;
 
 import java.time.Duration;
 import java.util.Properties;
@@ -71,6 +66,8 @@ public class NCOSQAGraphStockPearson {
         String topic = args[7];
         CADistanceBasedRanker ranker = new CADistanceBasedRanker(3, Ranker.Order.DESCENDING);
 
+        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
+
         StreamsBuilder builder = new StreamsBuilder();
 
         AnnKStream<String, Stock> annotatedKStream = AnnKStream.annotateGraphListNotWindowed(builder
@@ -79,10 +76,9 @@ public class NCOSQAGraphStockPearson {
                     public long extract(ConsumerRecord<Object, Object> record, long partitionTime) {
                         return ((Stock)record.value()).getTs();
                     }
-                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintStockValueFactory(0.1/constraintStrictness, -0.1/constraintStrictness));
+                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintStockValueFactory(0.1/constraintStrictness, -0.1/constraintStrictness), applicationSupplier, props);
 
 
-        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
 
 
         AnnKStream<Long, Stock> windowedStockAnnKStream = annotatedKStream
@@ -93,6 +89,9 @@ public class NCOSQAGraphStockPearson {
             }
         });
 
+        JoinWindows joinWindows1 = JoinWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(50000), Duration.ofMillis(100000))
+                .after(Duration.ZERO).before(Duration.ofMillis(100000));
+
         AnnKStream<Long, Pair<Stock, Stock>> joinedStream = windowedStockAnnKStream.join(windowedStockAnnKStream, new ValueJoiner<Stock, Stock, Pair<Stock, Stock>>() {
                     @Override
                     public Pair<Stock, Stock> apply(Stock value1, Stock value2) {
@@ -101,9 +100,11 @@ public class NCOSQAGraphStockPearson {
                         return new ImmutablePair<>(value1, value2);
                     }
                 },
-                joinWindows,
+                joinWindows1,
                 Serdes.Long(), StockSerde.instance()).filterNullValues();
 
+
+        TimeWindows timeWindows1 = TimeWindows.ofSizeAndGrace(Duration.ofMillis(100000), Duration.ofMillis(100000)).advanceBy(Duration.ofMillis(20000));
 
         AnnWindowedTable<String, PearsonAggregate> diffStream = joinedStream
                 .groupAndWindowByNotWindowed(new KeyValueMapper<Long, Pair<Stock, Stock>, String>() {
@@ -111,14 +112,14 @@ public class NCOSQAGraphStockPearson {
                     public String apply(Long key, Pair<Stock, Stock> value) {
                         return value.getLeft().getName().toString()+""+value.getRight().getName().toString();
                     }
-                }, timeWindows, Grouped.with("stock-pair-repartition-" + props.getProperty(StreamsConfig.APPLICATION_ID_CONFIG), Serdes.String(), ConsistencyAnnotatedRecord.serde(PairStockSerde.instance())))
+                }, timeWindows1, Grouped.with("stock-pair-repartition-" + props.getProperty(StreamsConfig.APPLICATION_ID_CONFIG), Serdes.String(), ConsistencyAnnotatedRecord.serde(PairStockSerde.instance())))
                 .aggregate((Initializer<PearsonAggregate>) () -> new PearsonAggregate('Z', 'Z'),
                         new Aggregator<String, Pair<Stock, Stock>, PearsonAggregate>() {
                             @Override
                             public PearsonAggregate apply(String key, Pair<Stock, Stock> value, PearsonAggregate aggregate) {
                                 return aggregate.addUp(value);
                             }
-                        }, Materialized.<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<PearsonAggregate>>>as(Stores.inMemoryWindowStore(appID, Duration.ofMillis(annotationAwareTimeWindows.size() + annotationAwareTimeWindows.gracePeriodMs()), Duration.ofMillis(annotationAwareTimeWindows.size()), false))
+                        }, Materialized.<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<PearsonAggregate>>>as(Stores.inMemoryWindowStore(appID, Duration.ofMillis(timeWindows1.size() + timeWindows1.gracePeriodMs()), Duration.ofMillis(timeWindows1.size()), false))
                                 .withKeySerde(Serdes.String()).withValueSerde(ConsistencyAnnotatedRecord.serde(PearsonAggregate.serde())));
 
 //        diffStream.getInternalKTable().toStream().process(new ProcessorSupplier<Windowed<String>, ConsistencyAnnotatedRecord<ValueAndTimestamp<PearsonAggregate>>, Void, Void>() {
@@ -128,7 +129,7 @@ public class NCOSQAGraphStockPearson {
 //            }
 //        });
 
-        diffStream.topKProcessorVisualizer(ranker, builder, timeWindows, applicationSupplier, props);
+        diffStream.topKProcessorVisualizer(ranker, builder, timeWindows1, applicationSupplier, props);
 
         KafkaStreams streams = new KafkaStreams(builder.build(), props);
 

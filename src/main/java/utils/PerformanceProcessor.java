@@ -16,6 +16,7 @@ import java.util.Properties;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public class PerformanceProcessor<Kin, Vin> implements Processor<Kin, ConsistencyAnnotatedRecord<Vin>, Void, Void> {
     private final String resultFileSuffix;
@@ -91,20 +92,22 @@ public class PerformanceProcessor<Kin, Vin> implements Processor<Kin, Consistenc
             memorySizeSum+=memorySize;
             cpuUtilizationSum+=cpuUtilization;
             numberOfInconsistencies += record.value().getPolynomial()
-                    .getMonomials().stream()
-                    .reduce(0L,
-                            (aLong, monomial) -> monomial.getCardinality() + aLong,
-                            Long::sum);
+                    .getMonomials().stream().filter(new Predicate<Monomial>() {
+                        @Override
+                        public boolean test(Monomial monomial) {
+                            return monomial.getCardinality()>0;
+                        }
+                    }).count();
 
             count++;
             if (count%granularity==0 && granularity!=-1){
                 register();
             }
-            if(count > maxEvents && !finished){
-                finished = true;
-                register();
-                shutdownHook.close();
-            }
+//            if(count > maxEvents && !finished){
+//                finished = true;
+//                register();
+//                shutdownHook.close();
+//            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -147,4 +150,13 @@ public class PerformanceProcessor<Kin, Vin> implements Processor<Kin, Consistenc
         }
     }
 
+    @Override
+    public void close() {
+        try {
+            register();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Processor.super.close();
+    }
 }

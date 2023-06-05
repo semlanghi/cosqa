@@ -17,7 +17,6 @@ import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.processor.TimestampExtractor;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorSupplier;
-import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.*;
 import org.apache.kafka.streams.state.internals.InMemoryKeyValueBytesStoreSupplier;
 import org.apache.kafka.streams.state.internals.ValueAndTimestampSerde;
@@ -27,7 +26,8 @@ import stocks.*;
 import topkstreaming.*;
 import utils.ApplicationSupplier;
 import utils.ExperimentConfig;
-import utils.PerformanceProcessor;
+import utils.PerformanceInputInconsistencyTransformer;
+import utils.PerformanceInputTransformerNotAnnotated;
 
 import java.time.Duration;
 import java.util.Map;
@@ -76,6 +76,8 @@ public class KCOSQAStockPearson {
         JoinWindows joinWindows = JoinWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(timeWindows.size()/2), size)
                 .after(Duration.ZERO).before(size);
         String topic = args[7];
+        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
+
 
 
         //Building a stock stream within the ValueAndTimestamp Object
@@ -170,11 +172,18 @@ public class KCOSQAStockPearson {
                     public String apply(Windowed<ValueAndTimestamp<Stock>> key, ConsistencyAnnotatedRecord<ValueAndTimestamp<Stock>> value) {
                         return key.key().value().getName().toString();
                     }
-                });
+                }).transform(new TransformerSupplier<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<Stock>>, KeyValue<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<Stock>>>>() {
+                    @Override
+                    public Transformer<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<Stock>>, KeyValue<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<Stock>>>> get() {
+                        return new PerformanceInputInconsistencyTransformer<>(applicationSupplier, props);
+                    }
+                });;
 
-        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
 
 
+        JoinWindows joinWindows1 = JoinWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(50000), Duration.ofMillis(100000))
+                .after(Duration.ZERO).before(Duration.ofMillis(100000));
+        TimeWindows timeWindows1 = TimeWindows.ofSizeAndGrace(Duration.ofMillis(100000), Duration.ofMillis(100000)).advanceBy(Duration.ofMillis(20000));
 
 
         //Processing pipeline of the annotated stream
@@ -193,9 +202,9 @@ public class KCOSQAStockPearson {
             ValueAndTimestamp<Pair<Stock, Stock>> valueAndTimestamp = ValueAndTimestamp.make(internalValueJoiner.apply(value1.getWrappedRecord().value(), value2.getWrappedRecord().value())
                     , Math.max(value1.getWrappedRecord().timestamp(), value2.getWrappedRecord().timestamp()));
             return new ConsistencyAnnotatedRecord<>(value1.getPolynomial().times(value2.getPolynomial()), valueAndTimestamp);
-        }, joinWindows, StreamJoined.with(Serdes.Long(), ConsistencyAnnotatedRecord.serde(StockSerde.instance()), ConsistencyAnnotatedRecord.serde(StockSerde.instance()))
-                .withThisStoreSupplier(Stores.inMemoryWindowStore("join1"+ UUID.randomUUID(), Duration.ofMillis(joinWindows.size() + joinWindows.gracePeriodMs()), Duration.ofMillis(joinWindows.size()), true))
-                .withOtherStoreSupplier(Stores.inMemoryWindowStore("join2"+UUID.randomUUID(), Duration.ofMillis(joinWindows.size() + joinWindows.gracePeriodMs()), Duration.ofMillis(joinWindows.size()), true)))
+        }, joinWindows1, StreamJoined.with(Serdes.Long(), ConsistencyAnnotatedRecord.serde(StockSerde.instance()), ConsistencyAnnotatedRecord.serde(StockSerde.instance()))
+                .withThisStoreSupplier(Stores.inMemoryWindowStore("join1"+ UUID.randomUUID(), Duration.ofMillis(joinWindows1.size() + joinWindows1.gracePeriodMs()), Duration.ofMillis(joinWindows1.size()), true))
+                .withOtherStoreSupplier(Stores.inMemoryWindowStore("join2"+UUID.randomUUID(), Duration.ofMillis(joinWindows1.size() + joinWindows1.gracePeriodMs()), Duration.ofMillis(joinWindows1.size()), true)))
                 .filter(new Predicate<Long, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<Stock, Stock>>>>() {
                     @Override
                     public boolean test(Long key, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<Stock, Stock>>> value) {
@@ -224,7 +233,7 @@ public class KCOSQAStockPearson {
                 } else return aggregate.addUp(value);
             }
         };
-        Materialized<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<PearsonAggregate>>, WindowStore<Bytes, byte[]>> pearsonMaterialized = Materialized.<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<PearsonAggregate>>>as(Stores.inMemoryWindowStore("cdscd", Duration.ofMillis(annotationAwareTimeWindows.size() + annotationAwareTimeWindows.gracePeriodMs()), Duration.ofMillis(annotationAwareTimeWindows.size()), false))
+        Materialized<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<PearsonAggregate>>, WindowStore<Bytes, byte[]>> pearsonMaterialized = Materialized.<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<PearsonAggregate>>>as(Stores.inMemoryWindowStore("cdscd", Duration.ofMillis(timeWindows1.size() + timeWindows1.gracePeriodMs()), Duration.ofMillis(timeWindows1.size()), false))
                 .withKeySerde(Serdes.String()).withValueSerde(ConsistencyAnnotatedRecord.serde(PearsonAggregate.serde()));
         KTable<Windowed<String>, ConsistencyAnnotatedRecord<ValueAndTimestamp<PearsonAggregate>>> diffStream = joinedStream
                 .groupBy(new KeyValueMapper<Long, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<Stock, Stock>>>, String>() {
@@ -234,7 +243,7 @@ public class KCOSQAStockPearson {
                              }
                          },
                         Grouped.with("stock-pair-repartition-" + props.getProperty(StreamsConfig.APPLICATION_ID_CONFIG), Serdes.String(), ConsistencyAnnotatedRecord.serde(PairStockSerde.instance())))
-                .windowedBy(timeWindows)
+                .windowedBy(timeWindows1)
                 .aggregate(() -> new ConsistencyAnnotatedRecord<>(ValueAndTimestamp.make(pearsonAggregateInitializer.apply(), 0L)), (key, value, aggregate) -> {
                     Polynomial resultPoly = aggregate.getPolynomial().plus(value.getPolynomial());
                     long ts = Math.max(value.getWrappedRecord().timestamp(), aggregate.getWrappedRecord().timestamp());

@@ -92,11 +92,11 @@ public class PerformanceProcessorNI<Kin, Vin> implements Processor<Kin, Vin, Voi
             if (count%granularity==0 && granularity!=-1){
                 register();
             }
-            if(count > maxEvents && !finished){
-                finished = true;
-                register();
-                shutdownHook.close();
-            }
+//            if(count > maxEvents && !finished){
+//                finished = true;
+//                register();
+//                shutdownHook.close();
+//            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -139,4 +139,13 @@ public class PerformanceProcessorNI<Kin, Vin> implements Processor<Kin, Vin, Voi
         }
     }
 
+    @Override
+    public void close() {
+        try {
+            register();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Processor.super.close();
+    }
 }

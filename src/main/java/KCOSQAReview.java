@@ -2,7 +2,6 @@ import annotation.AnnotationAwareTimeWindows;
 import annotation.ConsistencyAnnotatedRecord;
 import annotation.constraint.ConstraintFactory;
 import annotation.constraint.StreamingConstraint;
-import annotation.polynomial.Monomial;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.config.TopicConfig;
@@ -26,10 +25,10 @@ import reviews.SpeedConstraintReviewValueFactory;
 import topkstreaming.*;
 import utils.ApplicationSupplier;
 import utils.ExperimentConfig;
-import utils.PerformanceProcessor;
+import utils.PerformanceInputInconsistencyTransformer;
+import utils.PerformanceInputTransformerNotAnnotated;
 
 import java.time.Duration;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
@@ -53,6 +52,7 @@ public class KCOSQAReview {
         props.put(ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID().toString());
         props.put(StreamsConfig.topicPrefix(TopicConfig.SEGMENT_BYTES_CONFIG), Integer.MAX_VALUE);
         props.put(StreamsConfig.topicPrefix(TopicConfig.SEGMENT_MS_CONFIG), Long.MAX_VALUE);
+        props.put(StreamsConfig.topicPrefix(TopicConfig.MAX_MESSAGE_BYTES_CONFIG), 2835395);
         props.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, 1);
 
 
@@ -75,6 +75,8 @@ public class KCOSQAReview {
         JoinWindows joinWindows = JoinWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(timeWindows.size()/2), size)
                 .after(Duration.ZERO).before(size);
         String topic = args[7];
+        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
+
 
         //Building a Review stream within the ValueAndTimestamp Object
         StreamsBuilder builder = new StreamsBuilder();
@@ -169,9 +171,13 @@ public class KCOSQAReview {
                     public String apply(Windowed<ValueAndTimestamp<Review>> key, ConsistencyAnnotatedRecord<ValueAndTimestamp<Review>> value) {
                         return key.key().value().key();
                     }
+                }).transform(new TransformerSupplier<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<Review>>, KeyValue<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<Review>>>>() {
+                    @Override
+                    public Transformer<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<Review>>, KeyValue<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<Review>>>> get() {
+                        return new PerformanceInputInconsistencyTransformer<>(applicationSupplier, props);
+                    }
                 });
 
-        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
 
 
 //        annotatedKStream.process(new ProcessorSupplier<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<Review>>, Void, Void>() {

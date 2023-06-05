@@ -2,6 +2,7 @@ package topkstreaming;
 
 import annotation.AnnotationAwareTimeWindows;
 import annotation.ConsistencyAnnotatedRecord;
+import annotation.polynomial.Monomial;
 import com.opencsv.CSVWriter;
 import org.apache.kafka.streams.kstream.Windowed;
 import org.apache.kafka.streams.processor.api.ContextualProcessor;
@@ -18,6 +19,7 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 import java.util.Properties;
+import java.util.function.Predicate;
 
 public class TopKCAProcessorNotWindowed<K,V> extends ContextualProcessor<K, ConsistencyAnnotatedRecord<V>, Void, Void> {
 
@@ -116,20 +118,22 @@ public class TopKCAProcessorNotWindowed<K,V> extends ContextualProcessor<K, Cons
             memorySizeSum+=memorySize;
             cpuUtilizationSum+=cpuUtilization;
             numberOfInconsistencies += record.value().getPolynomial()
-                    .getMonomials().stream()
-                    .reduce(0L,
-                            (aLong, monomial) -> monomial.getCardinality() + aLong,
-                            Long::sum);
+                    .getMonomials().stream().filter(new Predicate<Monomial>() {
+                        @Override
+                        public boolean test(Monomial monomial) {
+                            return monomial.getCardinality()>0;
+                        }
+                    }).count();
 
             count++;
             if (count%granularity==0 && granularity!=-1){
                 register();
             }
-            if(count > maxEvents && !finished){
-                finished = true;
-                register();
-                shutdownHook.close();
-            }
+//            if(count > maxEvents && !finished){
+//                finished = true;
+//                register();
+//                shutdownHook.close();
+//            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -174,6 +178,11 @@ public class TopKCAProcessorNotWindowed<K,V> extends ContextualProcessor<K, Cons
 
     @Override
     public void close() {
+        try {
+            register();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         topKStore.close();
     }
 

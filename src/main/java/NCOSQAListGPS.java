@@ -8,13 +8,8 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.Topology;
-import org.apache.kafka.streams.kstream.Consumed;
-import org.apache.kafka.streams.kstream.JoinWindows;
-import org.apache.kafka.streams.kstream.TimeWindows;
+import org.apache.kafka.streams.*;
+import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.processor.TimestampExtractor;
 import org.apache.kafka.streams.processor.api.Processor;
@@ -29,6 +24,7 @@ import topkstreaming.Ranker;
 import topkstreaming.TopKCAProcessorNotWindowed;
 import utils.ApplicationSupplier;
 import utils.ExperimentConfig;
+import utils.PerformanceInputTransformerNotAnnotated;
 
 import java.time.Duration;
 import java.util.Map;
@@ -75,6 +71,8 @@ public class NCOSQAListGPS {
         JoinWindows joinWindows = JoinWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(timeWindows.size()/2), size)
                 .after(Duration.ZERO).before(size);
         String topic = args[7];
+        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
+
 
         CADistanceBasedRanker ranker = new CADistanceBasedRanker(3, Ranker.Order.DESCENDING);
 
@@ -85,10 +83,9 @@ public class NCOSQAListGPS {
                     public long extract(ConsumerRecord<Object, Object> record, long partitionTime) {
                         return ((GPS)record.value()).timestamp();
                     }
-                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintGPSValueFactory(0.001/constraintStrictness, -0.001/constraintStrictness));
+                }, Topology.AutoOffsetReset.EARLIEST)), timeWindows.size(), timeWindows.advanceMs, new SpeedConstraintGPSValueFactory(0.001/constraintStrictness, -0.001/constraintStrictness), applicationSupplier, props);
 
 
-        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
 
 //        annotatedKStream.getInternalKStream().process(new ProcessorSupplier<String, ConsistencyAnnotatedRecord<ValueAndTimestamp<GPS>>, Void, Void>() {
 //            @Override

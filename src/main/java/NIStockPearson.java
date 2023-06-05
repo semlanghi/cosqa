@@ -1,12 +1,10 @@
 import annotation.AnnotationAwareTimeWindows;
-import annotation.ConsistencyAnnotatedRecord;
 import org.apache.kafka.common.config.TopicConfig;
+import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorSupplier;
-import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.StoreBuilder;
-import org.apache.kafka.streams.state.ValueAndTimestamp;
 import stocks.PairStockSerde;
 import stocks.PearsonAggregate;
 import stocks.Stock;
@@ -16,10 +14,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.processor.TimestampExtractor;
 import org.apache.kafka.streams.state.Stores;
@@ -28,7 +22,7 @@ import org.slf4j.LoggerFactory;
 import topkstreaming.*;
 import utils.ApplicationSupplier;
 import utils.ExperimentConfig;
-import utils.PerformanceProcessorNI;
+import utils.PerformanceInputTransformerNotAnnotated;
 
 import java.time.Duration;
 import java.util.Map;
@@ -75,6 +69,8 @@ public class NIStockPearson {
         JoinWindows joinWindows = JoinWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(timeWindows.size()/2), size)
                 .after(Duration.ZERO).before(size);
         String topic = args[7];
+        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
+
 
         StreamsBuilder builder = new StreamsBuilder();
         KStream<String, Stock> annotatedKStream = builder
@@ -83,14 +79,21 @@ public class NIStockPearson {
                     public long extract(ConsumerRecord<Object, Object> record, long partitionTime) {
                         return ((Stock)record.value()).getTs();
                     }
-                }, Topology.AutoOffsetReset.EARLIEST));
+                }, Topology.AutoOffsetReset.EARLIEST)).transform(new TransformerSupplier<String, Stock, KeyValue<String, Stock>>() {
+                    @Override
+                    public Transformer<String, Stock, KeyValue<String, Stock>> get() {
+                        return new PerformanceInputTransformerNotAnnotated(applicationSupplier, props);
+                    }
+                });
 
 
-        ApplicationSupplier applicationSupplier = new ApplicationSupplier(1);
 
         //Removed for testing
         KStream<Long, Stock> annotatedTimestampedKStream = annotatedKStream
                 .selectKey((key, value) -> value.getTs());
+
+        joinWindows = JoinWindows.ofTimeDifferenceAndGrace(Duration.ofMillis(50000), Duration.ofMillis(100000))
+                .after(Duration.ZERO).before(Duration.ofMillis(100000));
 
         KStream<Long , Pair<Stock, Stock>> joinedStream = annotatedTimestampedKStream.join(annotatedTimestampedKStream, new ValueJoiner<Stock, Stock, Pair<Stock, Stock>>() {
                     @Override
@@ -112,6 +115,8 @@ public class NIStockPearson {
                         else return false;
                     }
                 });;
+
+        timeWindows = TimeWindows.ofSizeAndGrace(Duration.ofMillis(100000), Duration.ofMillis(100000)).advanceBy(Duration.ofMillis(20000));
 
 
         KTable<Windowed<String>, PearsonAggregate> diffStream = joinedStream
@@ -170,7 +175,7 @@ public class NIStockPearson {
 
             @Override
             public StateStore build() {
-                return new InMemoryTopKKeyValueStore<>(ranker.comparator(), timeWindows.sizeMs*10, TOP_K_NAME, ranker.limit());
+                return new InMemoryTopKKeyValueStore<>(ranker.comparator(), annotationAwareTimeWindows.sizeMs*10, TOP_K_NAME, ranker.limit());
             }
 
             @Override
