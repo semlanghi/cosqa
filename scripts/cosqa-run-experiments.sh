@@ -1,13 +1,8 @@
 #!/bin/bash
 
-#$1 CONSTRAINT_STRICTNESS
-#$2 INCONSISTENCY_PERCENTAGE, the percentage of inconsistency injected, >0 only for the linearroad case
-#$3 WINDOW_SIZE_MS
-#$4 WINDOW_SLIDE_MS
-#$5 RESULT_FILE_DIR -- First argument of the script
-#$6 EVENTS_MAX is the number of events to consume -- Second Argument of the script
-#$7 EVENTS_GRANULARITY Every how many events register performance
-#$8 Events in the topic -- Third Argument of the script
+#$1 RESULTS_DIR
+#$2 NRECORDS_TO_PROCESS
+#$3 GRANULARITY
 
 MEMORY="15g"
 
@@ -117,9 +112,6 @@ for ((z=1; z<=2; z++)); do
                         wait
                         topic="gps-nrecords-$3"
                         java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"GPSNumberOfConstraints "$cs" "$ip" "$ws" $((ws/wssf)) "$1" "$2" $(($2*2)) "$topic" &> ${name_experiment[$i]}-gps-ncons.out &
-                        wait
-                        topic="linearroad-nrecords-$3"
-                        java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"LinearRoadNumberOfConstraints "1" "$ip" "$cs" 0 "$((ws*1000))" $(((ws/wssf)*1000)) "$1" "$2" "-1" "$topic" &> ${name_experiment[$i]}-linearroad-ncons.out &
                         wait
                         topic="stocks-nrecords-$3"
                         java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar "${name_experiment[$i]}"StockComboNumberOfConstraints "$cs" "$ip" "$((ws*1000))" $(((ws/wssf)*1000)) "$1" "$2" "-1" "$topic" &> ${name_experiment[$i]}-stock-combo-ncons.out &

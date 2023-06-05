@@ -1,13 +1,9 @@
 #!/bin/bash
 
-#$1 CONSTRAINT_STRICTNESS
-#$2 INCONSISTENCY_PERCENTAGE, the percentage of inconsistency injected, >0 only for the linearroad case
-#$3 WINDOW_SIZE_MS
-#$4 WINDOW_SLIDE_MS
-#$5 RESULT_FILE_DIR -- First argument of the script
-#$6 EVENTS_MAX is the number of events to consume -- Second Argument of the script
-#$7 EVENTS_GRANULARITY Every how many events register performance
-#$8 Events in the topic -- Third Argument of the script
+
+#$1 RESULTS_DIR
+#$2 NRECORDS_TO_PROCESS
+#$3 GRANULARITY
 
 MEMORY="15g"
 
