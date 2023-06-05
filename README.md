@@ -43,9 +43,9 @@ NOTE: `granularity` is a debug parameter, and it should always be bigger than `n
 
 In the following, the performance results in terms of throughput, time percentage with respect to annotation and consumption overhead, and scalability with respect to the number of constraints used. 
 
-![](throughput.pdf)
-![](overheadstime.pdf)
-![](nconstraints.pdf)
+![](throughput.png)
+![](annotatointime.png)
+![](numberofconstraints.png)
 
 
 
