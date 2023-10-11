@@ -20,7 +20,7 @@ public class ProducingStocks {
         String key = String.valueOf('A');
         for (int i = 0; i < 1; i++) {
             try {
-                StockStartEndSplitter stockStartEndSplitter = new StockStartEndSplitter("/Users/samuelelanghi/Documents/projects/cosqa/src/main/resources/stocks/AAPL.csv");
+                StockStartEndSplitter stockStartEndSplitter = new StockStartEndSplitter("./cosqa/src/main/resources/stocks/AAPL.csv");
                 Pair<Pair<Long, Double>, Pair<Long,Double>> pair = stockStartEndSplitter.read();
 
                 while (pair != null){

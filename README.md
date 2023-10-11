@@ -2,7 +2,7 @@
 
 This application allows to perform consistency-aware query answering through three implementations (NCOSQAGraph, NCOSQAList, and KCOSQA classes) realized on top of Kafka Streams. 
 A fourth implementation without consistency awareness (NI classes) is included in the repo. 
-A streaming-adapted, database Baseline implementation is located in [this](https://github.com/semlanghi/INCA/tree/master) forked repository.
+A streaming-adapted, database Baseline implementation is located in [this](https://anonymous.4open.science/r/INCA-39D4/) repository.
 
 ## Experiments 
 The experiments were performed using Java 17.0.2 and built through Maven 3.8.1. 
@@ -26,7 +26,7 @@ mvn package
 
 
 
-Run the following script to create and populate Kafka topics, where `nrecords` is the number of records inside each topic (datasets are replicated if the number exceeds the dataset max quantity of records), and `DATASET_DIR` is the local dataset directory, which can be downloaded from this [link](https://drive.google.com/drive/folders/153vr5Id4PTGR8Art0Ebf9wuEr_3jCSOj?usp=share_link).
+Run the following script to create and populate Kafka topics, where `nrecords` is the number of records inside each topic (datasets are replicated if the number exceeds the dataset max quantity of records), and `DATASET_DIR` is the local dataset directory, which can be downloaded from this [link](https://drive.google.com/file/d/1ntZWqej8tuG0JeZLKH5cV-dlPjvuQyR2/view?usp=share_link).
 ```
 .PROJECT_DIR/scripts/populate-topics.sh nrecords DATASET_DIR KAFKA_DIR
 ```
@@ -44,7 +44,7 @@ This other script runs KCOSQA experiments
 ```
 NOTE: `granularity` is a debug parameter, and it should always be bigger than `nrecords_to_process` when running the experiments. 
 
-The baseline experiments can be executed through the `run-inca.sh` script, located here [repo](https://github.com/semlanghi/INCA/blob/master/IQ/scripts/run-inca.sh), with the same argument as the previous two scripts (keep in mind that the baseline is far slower, thus it is reasonable to use a reduced number of events).
+The baseline experiments can be executed through the `run-inca.sh` script, with the same argument as the previous two scripts (keep in mind that the baseline is far slower, thus it is reasonable to use a reduced number of events).
 
 In the following, the performance results in terms of throughput, time percentage with respect to annotation and consumption overhead, and scalability with respect to the number of constraints used.
 

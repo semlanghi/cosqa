@@ -85,7 +85,7 @@ public class LinearRoadPreprocessing {
     public static void main(String[] args){
         try {
 
-            File dir = new File("/Users/samuelelanghi/Documents/projects/cosqa/src/main/resources/linearroad/");
+            File dir = new File("./cosqa/src/main/resources/linearroad/");
             File[] directoryListing = dir.listFiles();
             if (directoryListing != null) {
 
