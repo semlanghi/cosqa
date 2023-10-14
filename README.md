@@ -46,11 +46,14 @@ NOTE: `granularity` is a debug parameter, and it should always be bigger than `n
 
 The baseline experiments can be executed through the `run-inca.sh` script, with the same argument as the previous two scripts (keep in mind that the baseline is far slower, thus it is reasonable to use a reduced number of events).
 
-In the following, the performance results in terms of throughput, time percentage with respect to annotation and consumption overhead, and scalability with respect to the number of constraints used.
+In the following, the performance results in terms of throughput, time percentage with respect to annotation and consumption overhead, and scalability with respect to the number of constraints used and number of inconsistencies detected.
 
 ![](throughput.png)
 ![](annotatointime.png)
 ![](numberofconstraints.png)
+<p align="center">
+    <img src="./throughput_inc.png" width=50%>
+</p>
 
 
 
