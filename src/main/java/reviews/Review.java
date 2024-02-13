@@ -42,6 +42,10 @@ public class Review {
         return value;
     }
 
+    public void dirty(){
+        this.value = 100;
+    }
+
     public static void main(String[] args){
         Review review = new Review(120030L, "finalfantasy", 12345L, 5);
         Review review1 = new Review(120030L, "finalfantasy", 12345L, 5);

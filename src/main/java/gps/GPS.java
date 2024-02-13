@@ -36,6 +36,11 @@ public class GPS {
         return y;
     }
 
+    public void dirty() {
+        this.x = 11000;
+    }
+
+
     public static void main(String[] args){
         GPS GPS = new GPS(120030L, 12345L, 5);
         GPS GPS1 = new GPS(120030L, 12345L, 56);

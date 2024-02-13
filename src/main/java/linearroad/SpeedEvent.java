@@ -44,6 +44,10 @@ public class SpeedEvent {
         return segment;
     }
 
+    public void dirty(){
+        speed = 400;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

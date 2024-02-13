@@ -5,6 +5,7 @@ import org.apache.kafka.streams.kstream.Window;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public abstract class Monomial<R> implements Serializable {
 
@@ -40,6 +41,10 @@ public abstract class Monomial<R> implements Serializable {
         this.coefficient = coefficient;
         this.variables = variables;
         this.cardinality = cardinality;
+    }
+
+    public Set<R> getVariables() {
+        return variables.keySet();
     }
 
     public Monomial() {

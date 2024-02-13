@@ -1,9 +1,12 @@
 package annotation;
 
 import annotation.constraint.ConstraintFactory;
+import annotation.constraint.StreamingConstraint;
 import annotation.degreestore.InMemoryWindowDegreeStoreCGraph;
 import annotation.degreestore.InMemoryWindowDegreeStoreCGraphList;
 import annotation.degreestore.InMemoryWindowDegreeStoreLinkedHashMap;
+import annotation.polynomial.MonomialImplString;
+import annotation.polynomial.Polynomial;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.streams.KeyValue;
@@ -209,6 +212,51 @@ public interface AnnKStream<K, V> {
                     }
                 });
             }
+        }).transform(new TransformerSupplier<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>>() {
+            @Override
+            public Transformer<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>> get() {
+                return new PerformanceInputInconsistencyTransformer<>(applicationSupplier, props);
+            }
+        }));
+    }
+
+
+    public static <K,V> AnnKStream<K,V> annotateSchemaNotWindowed(KStream<K, V> stream,
+                                                                     ConstraintFactory<ValueAndTimestamp<V>> valueAndTimestampConstraintFactory, ApplicationSupplier applicationSupplier, Properties props) {
+        return new AnnKStreamImpl<>(stream.transform(new TransformerSupplier<K, V, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>>() {
+            @Override
+            public Transformer<K, V, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>> get() {
+                return new Transformer<K, V, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>>() {
+
+                    final ConstraintFactory<ValueAndTimestamp<V>> constraintFactory = valueAndTimestampConstraintFactory;
+                    ProcessorContext context;
+
+                    @Override
+                    public void init(ProcessorContext context) {
+                        this.context = context;
+                    }
+
+                    @Override
+                    public KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> transform(K key, V value) {
+                        ValueAndTimestamp<V> origin = ValueAndTimestamp.make(value, context.timestamp());
+                        StreamingConstraint<ValueAndTimestamp<V>> constraint = valueAndTimestampConstraintFactory.make(origin);
+                        // COnstraint true if >0
+                        ConsistencyAnnotatedRecord<ValueAndTimestamp<V>> polynomialConsistencyAnnotatedRecord;
+                        if (constraint.checkConstraint(origin)<0) {
+                            polynomialConsistencyAnnotatedRecord = new ConsistencyAnnotatedRecord<>(new Polynomial(new MonomialImplString(constraint.getDescription(), 1)), origin);
+                        } else{
+                            polynomialConsistencyAnnotatedRecord = new ConsistencyAnnotatedRecord<>(new Polynomial(), origin);
+                        }
+                        return new KeyValue<>(key, polynomialConsistencyAnnotatedRecord);
+                    }
+
+                    @Override
+                    public void close() {
+
+                    }
+                };
+            }
+
         }).transform(new TransformerSupplier<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>>() {
             @Override
             public Transformer<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>> get() {

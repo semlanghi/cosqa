@@ -16,6 +16,11 @@ public record SpeedConstraintDoubleValuePairFactory(double maxCoefficient,
                     return value.getLeft() - (valueAndTimestamp.getLeft() + minCoefficient * (value.getRight() - valueAndTimestamp.getRight()));
                 } else return 0;
             }
+
+            @Override
+            public String getDescription() {
+                return "SCP";
+            }
         };
     }
 }

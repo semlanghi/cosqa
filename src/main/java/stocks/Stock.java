@@ -27,6 +27,10 @@ public class Stock {
         return ts;
     }
 
+    public void dirty(){
+        this.value = 1000.0;
+    }
+
     public static void main(String[] args){
         Stock stock = new Stock('A', 12.3, 12L);
         Stock stock1 = new Stock('G', 27.3, 13L);

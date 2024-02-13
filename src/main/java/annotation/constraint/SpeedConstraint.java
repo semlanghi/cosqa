@@ -7,9 +7,16 @@ import java.util.Objects;
 public abstract class SpeedConstraint<V> implements StreamingConstraint<ValueAndTimestamp<V>> {
 
     private ValueAndTimestamp<V> origin;
+    protected String description;
 
     public SpeedConstraint(ValueAndTimestamp<V> origin) {
         this.origin = origin;
+        this.description = "SC";
+    }
+
+    public SpeedConstraint(ValueAndTimestamp<V> origin, String description) {
+        this.origin = origin;
+        this.description = description;
     }
 
     @Override
@@ -25,6 +32,11 @@ public abstract class SpeedConstraint<V> implements StreamingConstraint<ValueAnd
         if (!(o instanceof SpeedConstraint)) return false;
         SpeedConstraint<?> that = (SpeedConstraint<?>) o;
         return Objects.equals(origin, that.origin);
+    }
+
+    @Override
+    public String getDescription() {
+        return description + "_"+origin.timestamp();
     }
 
     @Override
