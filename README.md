@@ -20,10 +20,14 @@ The 4 approaches are:
 - `inkstream`: our approach
 
 All 4 approaches are reproduced using our framework, demonstrating its potential in terms of inconsistency management. 
-In particular, we used the information contained within the polynomials annotations to filter out events (`filter`) or to readjust the value (`song`).
+In particular, we used the information contained within the polynomials annotations to filter out events (`filter`) or to readjust the value (`song`). These two approaches results in an underestimation of the result.
 In our approach (`inkstream`), we also readjusted the value, but we were also able to _ignore the simultaneous violation of SC1 and SC2_, resulting in a result that is nearer to the `groundtruth`.
 
+
 ![](stock_data_plot.png)
+
+
+[1] Song, Shaoxu, et al. "SCREEN: stream data cleaning under speed constraints." Proceedings of the 2015 ACM SIGMOD International Conference on Management of Data. 2015.
 
 ### Performances
 
