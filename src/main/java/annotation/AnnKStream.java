@@ -25,12 +25,15 @@ import java.util.*;
 
 public interface AnnKStream<K, V> {
 
-    static final String ANNOTATE_NAME = "KSTREAM-ANNOTATE-STORE-"+ UUID.randomUUID();
+    String ANNOTATE_NAME = "KSTREAM-ANNOTATE-STORE-"+ UUID.randomUUID();
+    String ANNOTATE_NAME2 = "KSTREAM-ANNOTATE-STORE-"+ UUID.randomUUID();
     KStream<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> getInternalKStream();
 
     KStream<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> setInternalKStream(KStream<Windowed<Long>, ConsistencyAnnotatedRecord<ValueAndTimestamp<Pair<Stock, Stock>>>> transform);
 
     public AnnKStream<K,V> project(ValueMapper<V,V> valueMapper);
+
+    public AnnKStream<K,V> transformAnnotation(ValueMapper<ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> mapper);
 
     AnnKStream<K, V> filter(Predicate<K, V> internalPredicate);
 
@@ -39,6 +42,8 @@ public interface AnnKStream<K, V> {
     <VR> AnnKStream<K, VR> mapValues(ValueMapper<V, VR> valueMapper);
 
     AnnKStream<K, V> filterOnAnnotation(Predicate<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> predicate);
+
+    KStream<K, V> mapValuesOnAnnotation(ValueMapper<ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>, V> mapper);
 
     <VR> AnnKStream<K, VR> join(AnnKStream<K, V> otherStream, ValueJoiner<V, V, VR> internalValueJoiner, JoinWindows joinWindows, Serde<K> keySerde, Serde<V> internalValueSerde);
 
@@ -49,6 +54,9 @@ public interface AnnKStream<K, V> {
     <KR> AnnKStream<KR, V> selectKey(KeyValueMapper<K, ValueAndTimestamp<V>, KR> mapper);
 
     <KR,W extends Window> AnnTimeWindowedKStream<KR, V> groupAndWindowBy(KeyValueMapper<K, V, KR> keySelector, Windows<W> windows, Grouped<KR, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> grouped);
+
+
+
 
 
     public static <K,V> AnnKStream<K,V> annotate(KStream<K, V> stream, long scopeSize, long scopeSlide,
@@ -216,6 +224,109 @@ public interface AnnKStream<K, V> {
             @Override
             public Transformer<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>> get() {
                 return new PerformanceInputInconsistencyTransformer<>(applicationSupplier, props);
+            }
+        }));
+    }
+
+    public static <K,V> AnnKStream<K,V> annotateDoubleConstraint(KStream<K, V> stream, long scopeSize, long scopeSlide,
+                                                                     ConstraintFactory<ValueAndTimestamp<V>> valueAndTimestampConstraintFactory, ConstraintFactory<ValueAndTimestamp<V>> valueAndTimestampConstraintFactory2, ApplicationSupplier applicationSupplier, Properties props) {
+        String ANNOTATE_NAME = "KSTREAM-ANNOTATE-STORE-"+ UUID.randomUUID();
+        String ANNOTATE_NAME2 = "KSTREAM-ANNOTATE-STORE-"+ UUID.randomUUID();
+        return new AnnKStreamImpl<>(stream.transform(new TransformerSupplier<K, V, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>>() {
+            @Override
+            public Transformer<K, V, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>> get() {
+                return new ConsistencyAnnotatorMultiConstraintSong<>(ANNOTATE_NAME, ANNOTATE_NAME2, scopeSize, scopeSlide);
+            }
+
+
+            public Set<StoreBuilder<?>> stores() {
+
+                StoreBuilder<StateStore> o = new StoreBuilder<>() {
+                    @Override
+                    public StoreBuilder<StateStore> withCachingEnabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withCachingDisabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withLoggingEnabled(Map<String, String> config) {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withLoggingDisabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StateStore build() {
+                        return new InMemoryWindowDegreeStoreCGraphList<>(ANNOTATE_NAME, scopeSize, scopeSlide, valueAndTimestampConstraintFactory);
+                    }
+
+                    @Override
+                    public Map<String, String> logConfig() {
+                        return null;
+                    }
+
+                    @Override
+                    public boolean loggingEnabled() {
+                        return false;
+                    }
+
+                    @Override
+                    public String name() {
+                        return ANNOTATE_NAME;
+                    }
+                };
+
+                StoreBuilder<StateStore> o2 = new StoreBuilder<>() {
+                    @Override
+                    public StoreBuilder<StateStore> withCachingEnabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withCachingDisabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withLoggingEnabled(Map<String, String> config) {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withLoggingDisabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StateStore build() {
+                        return new InMemoryWindowDegreeStoreCGraphList<>(ANNOTATE_NAME2, scopeSize, scopeSlide, valueAndTimestampConstraintFactory2);
+                    }
+
+                    @Override
+                    public Map<String, String> logConfig() {
+                        return null;
+                    }
+
+                    @Override
+                    public boolean loggingEnabled() {
+                        return false;
+                    }
+
+                    @Override
+                    public String name() {
+                        return ANNOTATE_NAME2;
+                    }
+                };
+
+
+                return new HashSet<>(Arrays.asList(o,o2));
             }
         }));
     }

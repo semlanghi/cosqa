@@ -106,11 +106,12 @@ public class ConsistencyGraphList<V> implements ConsistencyGraph<V> {
                         int sizeOfPath = consistencyAnnotatedRecords.size();
                         ConsistencyAnnotatedRecord<ValueAndTimestamp<V>> valueAndTimestampConsistencyAnnotatedRecord = consistencyAnnotatedRecords.get(sizeOfPath - 1 - indexOfTraversal[i]);
                         ValueAndTimestamp<V> originPoint = valueAndTimestampConsistencyAnnotatedRecord.getWrappedRecord();
-                        double result = factory.make(originPoint).checkConstraint(consistencyAnnotatedRecord.getWrappedRecord());
+                        StreamingConstraint<ValueAndTimestamp<V>> make1 = factory.make(originPoint);
+                        double result = make1.checkConstraint(consistencyAnnotatedRecord.getWrappedRecord());
                         int resultInt = (int) Math.ceil(Math.abs(result));
 
                         if (resultInt != 0) {
-                            consistencyAnnotatedRecord.setPolynomial(consistencyAnnotatedRecord.getPolynomial().times(originPoint, resultInt));
+                            consistencyAnnotatedRecord.setPolynomial(consistencyAnnotatedRecord.getPolynomial().times(make1, resultInt));
                             indexOfTraversal[i]++;
                             canContinue = true;
                         } else {

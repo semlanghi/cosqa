@@ -42,6 +42,11 @@ public class AnnKStreamImpl<K,V> implements AnnKStream<K,V> {
     }
 
     @Override
+    public AnnKStream<K, V> transformAnnotation(ValueMapper<ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> mapper) {
+        return new AnnKStreamImpl<>(internalKStream.mapValues(mapper));
+    }
+
+    @Override
     public AnnKStream<K, V> filter(Predicate<K, V> internalPredicate) {
         return new AnnKStreamImpl<>(internalKStream.filter((key, value) -> internalPredicate.test(key, value.getWrappedRecord().value())));
     }
@@ -59,6 +64,11 @@ public class AnnKStreamImpl<K,V> implements AnnKStream<K,V> {
     @Override
     public AnnKStream<K, V> filterOnAnnotation(Predicate<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> predicate) {
         return new AnnKStreamImpl<>(internalKStream.filter(predicate));
+    }
+
+    @Override
+    public KStream<K, V> mapValuesOnAnnotation(ValueMapper<ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>, V> mapper) {
+        return internalKStream.mapValues(mapper);
     }
 
     @Override

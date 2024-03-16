@@ -11,12 +11,12 @@ public abstract class SpeedConstraint<V> implements StreamingConstraint<ValueAnd
 
     public SpeedConstraint(ValueAndTimestamp<V> origin) {
         this.origin = origin;
-        this.description = "SC";
+        this.description = "SC_"+origin.timestamp();
     }
 
     public SpeedConstraint(ValueAndTimestamp<V> origin, String description) {
         this.origin = origin;
-        this.description = description;
+        this.description = description + "_" + origin.timestamp();
     }
 
     @Override
@@ -36,7 +36,12 @@ public abstract class SpeedConstraint<V> implements StreamingConstraint<ValueAnd
 
     @Override
     public String getDescription() {
-        return description + "_"+origin.timestamp();
+        return description;
+    }
+
+    @Override
+    public String toString() {
+        return description;
     }
 
     @Override

@@ -3,9 +3,10 @@ package annotation.polynomial;
 import org.apache.kafka.streams.kstream.Window;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public abstract class Monomial<R> implements Serializable {
 
@@ -30,6 +31,26 @@ public abstract class Monomial<R> implements Serializable {
         cardinality = 1;
     }
 
+    public void simplify(R variable1, R variable2){
+        if (variables.isEmpty() || variables.size()<2)
+            return;
+
+        if (variables.containsKey(variable1) && variables.containsKey(variable2)){
+            Integer integer1 = variables.get(variable1);
+            Integer integer2 = variables.get(variable2);
+            if (integer1 < integer2){
+                variables.put(variable2, integer2 - integer1);
+                variables.remove(variable1);
+            } else if (integer1 > integer2){
+                variables.put(variable1, integer1 - integer2);
+                variables.remove(variable2);
+            } else {
+                variables.remove(variable2);
+                variables.remove(variable1);
+            }
+        }
+    }
+
     public Monomial(int coefficient) {
         this.coefficient = coefficient;
         variables = new HashMap<>();
@@ -45,6 +66,34 @@ public abstract class Monomial<R> implements Serializable {
 
     public Set<R> getVariables() {
         return variables.keySet();
+    }
+
+    public Collection<Integer> getExponents() {
+        return variables.values().isEmpty() ? Collections.singleton(0) : variables.values();
+    }
+
+    public Collection<Integer> getExponents(String prefix) {
+        if (variables.values().isEmpty())
+            return Collections.singleton(0);
+
+        Set<Integer> collect = variables.keySet().stream()
+                .filter(new Predicate<R>() {
+                    @Override
+                    public boolean test(R r) {
+                        return r.toString().startsWith(prefix);
+                    }
+                }).map(new Function<R, Integer>() {
+                    @Override
+                    public Integer apply(R r) {
+                        return variables.get(r);
+                    }
+                })
+                .collect(Collectors.toSet());
+
+        if (collect.isEmpty())
+            return Collections.singleton(0);
+
+        return collect;
     }
 
     public Monomial() {
