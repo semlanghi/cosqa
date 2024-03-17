@@ -5,6 +5,32 @@ A fourth implementation without consistency awareness (NI classes) is included i
 A streaming-adapted, database Baseline implementation is located in [this](https://anonymous.4open.science/r/INCA-39D4/) repository.
 
 ## Experiments 
+
+### Qualitative (preliminary)
+
+In the following, we report a qualitative study that we performed on an aggregate query that calculates the sum of the prices of a given Stock. 
+We analysed 4 (+1) different approaches for dealing with inconsistencies derivated by two speed constraints applied over the stream, i.e., SC1 and SC2.
+In our scenario, _we consider inconsistent the exclusive violation of either SC1 or SC2, but not the simultaneous violation of both_.
+The 4 approaches are:
+
+- `filter`: a database-inspired solutions where inconsistent records are simply filtered out of the stream, thus undersampling the aggregate
+- `song`: a solution derived from [1], where is performed a repair operation over streams with respect to Speed Constraints
+- `groundtruth`: is the actual groundtruth
+- `ninc`: no inconsistency management is performed
+- `inkstream`: our approach
+
+All 4 approaches are reproduced using our framework, demonstrating its potential in terms of inconsistency management. 
+In particular, we used the information contained within the polynomials annotations to filter out events (`filter`) or to readjust the value (`song`). These two approaches results in an underestimation of the result.
+In our approach (`inkstream`), we also readjusted the value, but we were also able to _ignore the simultaneous violation of SC1 and SC2_, resulting in a result that is nearer to the `groundtruth`.
+
+
+![](stock_data_plot.png)
+
+
+[1] Song, Shaoxu, et al. "SCREEN: stream data cleaning under speed constraints." Proceedings of the 2015 ACM SIGMOD International Conference on Management of Data. 2015.
+
+### Performances
+
 The experiments were performed using Java 17.0.2 and built through Maven 3.8.1. 
 On top of this, it is necessary to download Apache Kafka 3.1.0.
 Once everything is downloaded, startup Apache Kafka environment, first Zookeeper
