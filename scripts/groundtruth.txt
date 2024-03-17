@@ -1,0 +1,11 @@
+Stock{name=A, value=10.8, ts=1}
+Stock{name=A, value=19.8, ts=2}
+Stock{name=A, value=127.8, ts=3}
+Stock{name=A, value=235.8, ts=4}
+Stock{name=A, value=1315.8, ts=5}
+Stock{name=A, value=2395.8, ts=6}
+Stock{name=A, value=3475.8, ts=7}
+Stock{name=A, value=5455.8, ts=8}
+Stock{name=A, value=7435.8, ts=9}
+Stock{name=A, value=10315.800000000001, ts=10}
+Stock{name=A, value=13195.800000000001, ts=11}
