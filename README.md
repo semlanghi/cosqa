@@ -1,8 +1,8 @@
 # COSQA: Consistency-Aware Continuous Query Answering
 
-This application allows to perform consistency-aware query answering through three implementations (NCOSQAGraph, NCOSQAList, and KCOSQA classes) realized on top of Kafka Streams. 
-A fourth implementation without consistency awareness (NI classes) is included in the repo. 
-A streaming-adapted, database Baseline implementation is located in [this](https://anonymous.4open.science/r/INCA-39D4/) repository.
+This application allows to perform consistency-aware query answering through three implementations (inkstream/NCOSQAList, inkstream-optim/NCOSQAGraph, and naive/KCOSQA) realized on top of Kafka Streams. 
+A fourth implementation without consistency awareness (noinc/NI) is included in the repo. 
+A streaming-adapted, database Baseline implementation is located in [this](https://github.com/semlanghi/INCA) repository.
 
 ## Experiments 
 

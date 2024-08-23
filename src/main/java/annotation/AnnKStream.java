@@ -4,6 +4,7 @@ import annotation.constraint.ConstraintFactory;
 import annotation.constraint.StreamingConstraint;
 import annotation.degreestore.InMemoryWindowDegreeStoreCGraph;
 import annotation.degreestore.InMemoryWindowDegreeStoreCGraphList;
+import annotation.degreestore.InMemoryWindowDegreeStoreIncGraphList;
 import annotation.degreestore.InMemoryWindowDegreeStoreLinkedHashMap;
 import annotation.polynomial.MonomialImplString;
 import annotation.polynomial.Polynomial;
@@ -202,6 +203,66 @@ public interface AnnKStream<K, V> {
                     @Override
                     public StateStore build() {
                         return new InMemoryWindowDegreeStoreCGraphList<>(ANNOTATE_NAME, scopeSize, scopeSlide, valueAndTimestampConstraintFactory);
+                    }
+
+                    @Override
+                    public Map<String, String> logConfig() {
+                        return null;
+                    }
+
+                    @Override
+                    public boolean loggingEnabled() {
+                        return false;
+                    }
+
+                    @Override
+                    public String name() {
+                        return ANNOTATE_NAME;
+                    }
+                });
+            }
+        }).transform(new TransformerSupplier<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>>() {
+            @Override
+            public Transformer<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>> get() {
+                return new PerformanceInputInconsistencyTransformer<>(applicationSupplier, props);
+            }
+        }));
+    }
+
+    public static <K,V> AnnKStream<K,V> annotateIncGraphListNotWindowed(KStream<K, V> stream, long scopeSize, long scopeSlide,
+                                                                     ConstraintFactory<ValueAndTimestamp<V>> valueAndTimestampConstraintFactory, ApplicationSupplier applicationSupplier, Properties props) {
+        return new AnnKStreamImpl<>(stream.transform(new TransformerSupplier<K, V, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>>() {
+            @Override
+            public Transformer<K, V, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>> get() {
+                return new ConsistencyAnnotatorTransformerNotWindowed<>(ANNOTATE_NAME, scopeSize, scopeSlide);
+            }
+
+
+            public Set<StoreBuilder<?>> stores() {
+                return Collections.singleton(new StoreBuilder<>() {
+                    @Override
+                    public StoreBuilder<StateStore> withCachingEnabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withCachingDisabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withLoggingEnabled(Map<String, String> config) {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withLoggingDisabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StateStore build() {
+                        return new InMemoryWindowDegreeStoreIncGraphList<>(ANNOTATE_NAME, scopeSize, scopeSlide, valueAndTimestampConstraintFactory);
                     }
 
                     @Override

@@ -2,24 +2,22 @@ package annotation.cgraph;
 
 import annotation.ConsistencyAnnotatedRecord;
 import annotation.constraint.ConstraintFactory;
+import annotation.constraint.PrimaryKeyConstraint;
 import annotation.constraint.SpeedConstraintDoubleValueFactory;
 import annotation.constraint.StreamingConstraint;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.math3.util.Pair;
 import org.apache.kafka.streams.state.ValueAndTimestamp;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
-public class ConsistencyGraphList<V> implements ConsistencyGraph<V> {
-
-    protected ConstraintFactory<ValueAndTimestamp<V>> factory;
-    protected List<List<ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>> paths;
-
-
-    public ConsistencyGraphList(ConstraintFactory<ValueAndTimestamp<V>> constraintFactory) {
-        this.paths = new ArrayList<>();
-        this.factory = constraintFactory;
+public class InconsistencyGraphList<V> extends ConsistencyGraphList<V>{
+    public InconsistencyGraphList(ConstraintFactory<ValueAndTimestamp<V>> constraintFactory) {
+        super(constraintFactory);
     }
-
-
 
     @Override
     public ConsistencyAnnotatedRecord<ValueAndTimestamp<V>> add(ValueAndTimestamp<V> dataPoint){
@@ -32,7 +30,7 @@ public class ConsistencyGraphList<V> implements ConsistencyGraph<V> {
             boolean[] pathsClosed = new boolean[size];
             int[] indexOfTraversal = new int[size];
             boolean canContinue = true, attached = false;
-            Set<ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> consistentRecordsWithoutRedundancy = new HashSet<>();
+            Set<ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> inconsistentRecordsWithoutRedundancy = new HashSet<>();
 
             while (canContinue) {
                 canContinue = false;
@@ -47,7 +45,7 @@ public class ConsistencyGraphList<V> implements ConsistencyGraph<V> {
                         double result = factory.make(originPoint).checkConstraint(dataPoint);
                         int resultInt = (int) Math.ceil(Math.abs(result));
 
-                        if (resultInt != 0) {
+                        if (resultInt == 0) {
                             consistencyAnnotatedRecord.setPolynomial(consistencyAnnotatedRecord.getPolynomial().times(originPoint, resultInt));
                             indexOfTraversal[i]++;
                             canContinue = true;
@@ -57,12 +55,12 @@ public class ConsistencyGraphList<V> implements ConsistencyGraph<V> {
                                 consistencyAnnotatedRecords.add(consistencyAnnotatedRecord);
                             else {
                                 //Create new path only if the new path has not been created yet
-                                if (!consistentRecordsWithoutRedundancy.contains(valueAndTimestampConsistencyAnnotatedRecord)){
+                                if (!inconsistentRecordsWithoutRedundancy.contains(valueAndTimestampConsistencyAnnotatedRecord)){
                                     List<ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> nwPath = new ArrayList<>();
                                     nwPath.add(valueAndTimestampConsistencyAnnotatedRecord);
                                     nwPath.add(consistencyAnnotatedRecord);
                                     paths.add(nwPath);
-                                    consistentRecordsWithoutRedundancy.add(valueAndTimestampConsistencyAnnotatedRecord);
+                                    inconsistentRecordsWithoutRedundancy.add(valueAndTimestampConsistencyAnnotatedRecord);
                                 }
                             }
                             pathsClosed[i] = true;
@@ -94,7 +92,7 @@ public class ConsistencyGraphList<V> implements ConsistencyGraph<V> {
             boolean[] pathsClosed = new boolean[size];
             int[] indexOfTraversal = new int[size];
             boolean canContinue = true, attached = false;
-            Set<ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> consistentRecordsWithoutRedundancy = new HashSet<>();
+            Set<ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> inconsistentRecordsWithoutRedundancy = new HashSet<>();
 
             while (canContinue) {
                 canContinue = false;
@@ -110,7 +108,7 @@ public class ConsistencyGraphList<V> implements ConsistencyGraph<V> {
                         double result = make1.checkConstraint(consistencyAnnotatedRecord.getWrappedRecord());
                         int resultInt = (int) Math.ceil(Math.abs(result));
 
-                        if (resultInt != 0) {
+                        if (resultInt == 0) {
                             consistencyAnnotatedRecord.setPolynomial(consistencyAnnotatedRecord.getPolynomial().times(make1, resultInt));
                             indexOfTraversal[i]++;
                             canContinue = true;
@@ -120,12 +118,12 @@ public class ConsistencyGraphList<V> implements ConsistencyGraph<V> {
                                 consistencyAnnotatedRecords.add(consistencyAnnotatedRecord);
                             else {
                                 //Create new path only if the new path has not been created yet
-                                if (!consistentRecordsWithoutRedundancy.contains(valueAndTimestampConsistencyAnnotatedRecord)){
+                                if (!inconsistentRecordsWithoutRedundancy.contains(valueAndTimestampConsistencyAnnotatedRecord)){
                                     List<ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> nwPath = new ArrayList<>();
                                     nwPath.add(valueAndTimestampConsistencyAnnotatedRecord);
                                     nwPath.add(consistencyAnnotatedRecord);
                                     paths.add(nwPath);
-                                    consistentRecordsWithoutRedundancy.add(valueAndTimestampConsistencyAnnotatedRecord);
+                                    inconsistentRecordsWithoutRedundancy.add(valueAndTimestampConsistencyAnnotatedRecord);
                                 }
                             }
                             pathsClosed[i] = true;
@@ -148,53 +146,56 @@ public class ConsistencyGraphList<V> implements ConsistencyGraph<V> {
     }
 
     @Override
-    public List<ConsistencyNode<V>> getDebugNodeCollection() {
-        return null;
-    }
-
-    @Override
     public String toString() {
-        return "ConsistencyGraphList{" +
-                "paths=" + paths +
-                '}';
+        return "InconsistencyGraphList{paths:"+paths+"}";
     }
 
     public static void main(String[] args){
-        ConsistencyGraph<Double> consistencyGraph = new ConsistencyGraphList<>(new SpeedConstraintDoubleValueFactory(0.3, -0.3));
+        ConsistencyGraph<Pair<String, Double>> consistencyGraph = new InconsistencyGraphList<>(new ConstraintFactory<ValueAndTimestamp<Pair<String, Double>>>() {
+            @Override
+            public StreamingConstraint<ValueAndTimestamp<Pair<String, Double>>> make(ValueAndTimestamp<Pair<String, Double>> origin) {
+                return new PrimaryKeyConstraint<String, Pair<String, Double>>(origin) {
+                    @Override
+                    protected String getRecordKey(Pair<String, Double> value) {
+                        return value.getFirst();
+                    }
+                };
+            }
+        });
 
         long time = 0L;
 
-        consistencyGraph.add(ValueAndTimestamp.make(0.98, time));
+        consistencyGraph.add(ValueAndTimestamp.make(new Pair<>("k", 0.98), time));
         time++;
 
         System.out.println(consistencyGraph);
 
-        consistencyGraph.add(ValueAndTimestamp.make(1.01, time));
+        consistencyGraph.add(ValueAndTimestamp.make(new Pair<>("g", 1.1), time));
         time++;
 
         System.out.println(consistencyGraph);
 
-        consistencyGraph.add(ValueAndTimestamp.make(1.3, time));
+        consistencyGraph.add(ValueAndTimestamp.make(new Pair<>("k", 1.3), time));
         time++;
 
         System.out.println(consistencyGraph);
 
-        consistencyGraph.add(ValueAndTimestamp.make(1.6, time));
+        consistencyGraph.add(ValueAndTimestamp.make(new Pair<>("k", 1.6), time));
         time++;
 
         System.out.println(consistencyGraph);
 
-        consistencyGraph.add(ValueAndTimestamp.make(2.2, time));
+        consistencyGraph.add(ValueAndTimestamp.make(new Pair<>("k", 2.2), time));
         time++;
 
         System.out.println(consistencyGraph);
 
-        consistencyGraph.add(ValueAndTimestamp.make(2.4, time));
+        consistencyGraph.add(ValueAndTimestamp.make(new Pair<>("k", 2.4), time));
         time++;
 
         System.out.println(consistencyGraph);
 
-        consistencyGraph.add(ValueAndTimestamp.make(1.4, time));
+        consistencyGraph.add(ValueAndTimestamp.make(new Pair<>("k", 1.4), time));
         time++;
 
         System.out.println(consistencyGraph);
