@@ -15,6 +15,11 @@ public class SchemaConstraintGPSValueFactory implements ConstraintFactory<ValueA
     public SchemaConstraintGPSValueFactory() {
     }
 
+    @Override
+    public String getDescription() {
+        return "Sch";
+    }
+
 
     @Override
     public StreamingConstraint<ValueAndTimestamp<GPS>> make(ValueAndTimestamp<GPS> origin) {

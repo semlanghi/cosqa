@@ -46,10 +46,11 @@ public class InconsistencyGraphList<V> extends ConsistencyGraphList<V>{
                         int resultInt = (int) Math.ceil(Math.abs(result));
 
                         if (resultInt == 0) {
-                            consistencyAnnotatedRecord.setPolynomial(consistencyAnnotatedRecord.getPolynomial().times(originPoint, resultInt));
                             indexOfTraversal[i]++;
                             canContinue = true;
                         } else {
+                            //annotation happens when it is inconsistent
+                            consistencyAnnotatedRecord.setPolynomial(consistencyAnnotatedRecord.getPolynomial().times(valueAndTimestampConsistencyAnnotatedRecord.getPolynomial()));
                             attached = true;
                             if (indexOfTraversal[i] == 0)
                                 consistencyAnnotatedRecords.add(consistencyAnnotatedRecord);
@@ -109,10 +110,10 @@ public class InconsistencyGraphList<V> extends ConsistencyGraphList<V>{
                         int resultInt = (int) Math.ceil(Math.abs(result));
 
                         if (resultInt == 0) {
-                            consistencyAnnotatedRecord.setPolynomial(consistencyAnnotatedRecord.getPolynomial().times(make1, resultInt));
                             indexOfTraversal[i]++;
                             canContinue = true;
                         } else {
+                            consistencyAnnotatedRecord.setPolynomial(valueAndTimestampConsistencyAnnotatedRecord.getPolynomial().times(make1, resultInt));
                             attached = true;
                             if (indexOfTraversal[i] == 0)
                                 consistencyAnnotatedRecords.add(consistencyAnnotatedRecord);
@@ -152,6 +153,11 @@ public class InconsistencyGraphList<V> extends ConsistencyGraphList<V>{
 
     public static void main(String[] args){
         ConsistencyGraph<Pair<String, Double>> consistencyGraph = new InconsistencyGraphList<>(new ConstraintFactory<ValueAndTimestamp<Pair<String, Double>>>() {
+            @Override
+            public String getDescription() {
+                return "PK";
+            }
+
             @Override
             public StreamingConstraint<ValueAndTimestamp<Pair<String, Double>>> make(ValueAndTimestamp<Pair<String, Double>> origin) {
                 return new PrimaryKeyConstraint<String, Pair<String, Double>>(origin) {

@@ -54,7 +54,7 @@ public class NCOSQAPKGraphStockPearson {
         props.put(ExperimentConfig.EVENTS_MAX, args[5]);
         props.put(ExperimentConfig.EVENTS_GRANULARITY, args[6]);
 
-        props.put(ExperimentConfig.RESULT_FILE_SUFFIX, "ncosqa-stock-graph-pearson");
+        props.put(ExperimentConfig.RESULT_FILE_SUFFIX, "ncosqa-stock-graph-pearson-pk");
         //TODO: insert ExperimentConfig
 
         int constraintStrictness = Integer.parseInt(props.getProperty(ExperimentConfig.CONSTRAINT_STRICTNESS));

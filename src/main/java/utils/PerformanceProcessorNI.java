@@ -120,7 +120,7 @@ public class PerformanceProcessorNI<Kin, Vin> implements Processor<Kin, Vin, Voi
 
     private long getMemorySize() {
         Runtime runtime = Runtime.getRuntime();
-        return runtime.totalMemory();
+        return runtime.totalMemory() - runtime.freeMemory();
     }
 
     private double getCpuUtilization() {

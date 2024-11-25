@@ -86,4 +86,8 @@ public class SpeedEvent {
         System.out.println(serde.deserializer().deserialize("csbdjc", SpeedEvent2Byte));
 
     }
+
+    public void setSpeed(int repaired) {
+        this.speed = repaired;
+    }
 }

@@ -20,6 +20,11 @@ public class SpeedConstraintGPSValueFactoryWithDescriptionX implements Constrain
         this.description = description;
     }
 
+    @Override
+    public String getDescription() {
+        return "SC";
+    }
+
 
     @Override
     public StreamingConstraint<ValueAndTimestamp<GPS>> make(ValueAndTimestamp<GPS> origin) {

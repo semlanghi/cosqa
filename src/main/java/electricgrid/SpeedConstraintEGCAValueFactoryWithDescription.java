@@ -21,6 +21,11 @@ public class SpeedConstraintEGCAValueFactoryWithDescription implements Constrain
     }
 
     @Override
+    public String getDescription() {
+        return "SC";
+    }
+
+    @Override
     public StreamingConstraint<ValueAndTimestamp<EGC>> make(ValueAndTimestamp<EGC> origin) {
         return new SpeedConstraint<>(origin, description) {
             @Override

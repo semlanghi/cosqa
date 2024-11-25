@@ -5,6 +5,12 @@ import org.apache.kafka.streams.state.ValueAndTimestamp;
 public record SpeedConstraintDoubleValueFactory(double maxCoefficient,
                                                 double minCoefficient) implements ConstraintFactory<ValueAndTimestamp<Double>> {
 
+
+    @Override
+    public String getDescription() {
+        return "SC";
+    }
+
     @Override
     public StreamingConstraint<ValueAndTimestamp<Double>> make(ValueAndTimestamp<Double> origin) {
         return new SpeedConstraint<>(origin) {

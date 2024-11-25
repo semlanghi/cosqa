@@ -19,6 +19,10 @@ public class SpeedConstraintGPSValueFactory implements ConstraintFactory<ValueAn
         this.minCoefficient = minCoefficient;
     }
 
+    @Override
+    public String getDescription() {
+        return "SC";
+    }
 
     @Override
     public StreamingConstraint<ValueAndTimestamp<GPS>> make(ValueAndTimestamp<GPS> origin) {

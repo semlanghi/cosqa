@@ -20,6 +20,11 @@ public class SpeedConstraintStockValueFactory implements ConstraintFactory<Value
     }
 
     @Override
+    public String getDescription() {
+        return "SC";
+    }
+
+    @Override
     public StreamingConstraint<ValueAndTimestamp<Stock>> make(ValueAndTimestamp<Stock> origin) {
         return new SpeedConstraint<>(origin) {
             @Override

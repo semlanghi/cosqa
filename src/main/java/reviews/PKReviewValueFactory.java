@@ -18,6 +18,11 @@ public class PKReviewValueFactory implements ConstraintFactory<ValueAndTimestamp
     }
 
     @Override
+    public String getDescription() {
+        return "PK";
+    }
+
+    @Override
     public StreamingConstraint<ValueAndTimestamp<Review>> make(ValueAndTimestamp<Review> origin) {
         return new PrimaryKeyConstraint<Long, Review>(origin) {
             @Override

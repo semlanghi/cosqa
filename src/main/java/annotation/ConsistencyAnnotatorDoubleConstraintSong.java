@@ -7,7 +7,7 @@ import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.state.ValueAndTimestamp;
 import org.apache.kafka.streams.state.internals.WrappedStateStore;
 
-public class ConsistencyAnnotatorMultiConstraintSong<K, Vin> implements Transformer<K,Vin, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<Vin>>>> {
+public class ConsistencyAnnotatorDoubleConstraintSong<K, Vin> implements Transformer<K,Vin, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<Vin>>>> {
     private final long windowSize;
     private final long windowSlide;
     private ProcessorContext context;
@@ -16,7 +16,7 @@ public class ConsistencyAnnotatorMultiConstraintSong<K, Vin> implements Transfor
     private final String storeName;
     private final String storeName2;
 
-    public ConsistencyAnnotatorMultiConstraintSong(String storeName, String storeName2, long windowSize, long windowSlide) {
+    public ConsistencyAnnotatorDoubleConstraintSong(String storeName, String storeName2, long windowSize, long windowSlide) {
         this.storeName = storeName;
         this.storeName2 = storeName2;
         this.windowSize = windowSize;

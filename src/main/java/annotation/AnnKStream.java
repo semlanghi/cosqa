@@ -2,25 +2,21 @@ package annotation;
 
 import annotation.constraint.ConstraintFactory;
 import annotation.constraint.StreamingConstraint;
-import annotation.degreestore.InMemoryWindowDegreeStoreCGraph;
-import annotation.degreestore.InMemoryWindowDegreeStoreCGraphList;
-import annotation.degreestore.InMemoryWindowDegreeStoreIncGraphList;
-import annotation.degreestore.InMemoryWindowDegreeStoreLinkedHashMap;
+import annotation.degreestore.*;
 import annotation.polynomial.MonomialImplString;
 import annotation.polynomial.Polynomial;
+import electricgrid.PKElectricGridValueFactory;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.*;
+import org.apache.kafka.streams.kstream.internals.KStreamImpl;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.processor.StateStore;
 import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.ValueAndTimestamp;
 import stocks.Stock;
-import utils.ApplicationSupplier;
-import utils.ExperimentConfig;
-import utils.PerformanceInputInconsistencyTransformer;
-import utils.PerformanceInputInconsistencyTransformerDummy;
+import utils.*;
 
 import java.util.*;
 
@@ -229,6 +225,67 @@ public interface AnnKStream<K, V> {
         }));
     }
 
+
+    public static <K,V> KStream<K,V> annotateGraphListFilter(KStream<K, V> stream, long scopeSize, long scopeSlide,
+                                                                     ConstraintFactory<ValueAndTimestamp<V>> valueAndTimestampConstraintFactory, ApplicationSupplier applicationSupplier, Properties props) {
+        return stream.transform(new TransformerSupplier<K, V, KeyValue<K, V>>() {
+            @Override
+            public Transformer<K, V, KeyValue<K, V>> get() {
+                return new ConsistencyAnnotatorTransformerFilter<>(ANNOTATE_NAME, scopeSize, scopeSlide);
+            }
+
+
+            public Set<StoreBuilder<?>> stores() {
+                return Collections.singleton(new StoreBuilder<>() {
+                    @Override
+                    public StoreBuilder<StateStore> withCachingEnabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withCachingDisabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withLoggingEnabled(Map<String, String> config) {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withLoggingDisabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StateStore build() {
+                        return new InMemoryWindowDegreeStoreCGraphList<>(ANNOTATE_NAME, scopeSize, scopeSlide, valueAndTimestampConstraintFactory);
+                    }
+
+                    @Override
+                    public Map<String, String> logConfig() {
+                        return null;
+                    }
+
+                    @Override
+                    public boolean loggingEnabled() {
+                        return false;
+                    }
+
+                    @Override
+                    public String name() {
+                        return ANNOTATE_NAME;
+                    }
+                });
+            }
+        }).transform(new TransformerSupplier<K, V, KeyValue<K, V>>() {
+            @Override
+            public Transformer<K,V, KeyValue<K, V>> get() {
+                return new NotAnnotatedPerformanceInputInconsistencyTransformer<>(applicationSupplier, props);
+            }
+        });
+    }
+
     public static <K,V> AnnKStream<K,V> annotateIncGraphListNotWindowed(KStream<K, V> stream, long scopeSize, long scopeSlide,
                                                                      ConstraintFactory<ValueAndTimestamp<V>> valueAndTimestampConstraintFactory, ApplicationSupplier applicationSupplier, Properties props) {
         return new AnnKStreamImpl<>(stream.transform(new TransformerSupplier<K, V, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>>() {
@@ -289,6 +346,217 @@ public interface AnnKStream<K, V> {
         }));
     }
 
+    public static <K,V> AnnKStream<K,V> annotateMultiConstraint(KStream<K, V> stream, long scopeSize, long scopeSlide,
+                                                                  ApplicationSupplier applicationSupplier, Properties props, String factoryNames, ConstraintFactory<ValueAndTimestamp<V>>[] valueAndTimestampConstraintFactories) {
+
+        if (factoryNames.equals(""))
+            throw new IllegalArgumentException("The number of names must be equal to the number of factories");
+        String[] names = factoryNames.split(",");
+        if (names.length != valueAndTimestampConstraintFactories.length) {
+            throw new IllegalArgumentException("The number of names must be equal to the number of factories");
+        }
+
+
+        String name = "KSTREAM-MULTI-ANNOTATE-STORE-"+ UUID.randomUUID();
+
+
+        return new AnnKStreamImpl<>(stream.transform(new TransformerSupplier<K, V, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>>() {
+            @Override
+            public Transformer<K, V, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>> get() {
+                switch (factoryNames) {
+                    case "SC,PK,Sch":
+                        return new ConsistencyAnnotatorMultiConstraint<>(scopeSize, scopeSlide, valueAndTimestampConstraintFactories[2], name);
+                    case "SC,PK":
+                        return new ConsistencyAnnotatorMultiConstraint<>(scopeSize, scopeSlide, name);
+                    case "SC,Sch":
+                        return new ConsistencyAnnotatorMultiConstraint<>(scopeSize, scopeSlide, valueAndTimestampConstraintFactories[1], name);
+                    case "PK,Sch":
+                        return new ConsistencyAnnotatorMultiConstraint<>(scopeSize, scopeSlide, valueAndTimestampConstraintFactories[1], name);
+                    case "Sch":
+                        return new ConsistencyAnnotatorMultiConstraint<>(scopeSize, scopeSlide, valueAndTimestampConstraintFactories[0]);
+                    case "SC":
+                        return new ConsistencyAnnotatorMultiConstraint<>(scopeSize, scopeSlide, name);
+                    case "PK":
+                        return new ConsistencyAnnotatorMultiConstraint<>(scopeSize, scopeSlide, name);
+                    default: throw new IllegalArgumentException("The factory names are not correct");
+                }
+            }
+
+
+            public Set<StoreBuilder<?>> stores() {
+
+                if (factoryNames.equals("Sch"))
+                    return null;
+
+                Set<StoreBuilder<?>> storeBuilders = new HashSet<>();
+
+                storeBuilders.add(new StoreBuilder<>() {
+                    @Override
+                    public StoreBuilder<StateStore> withCachingEnabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withCachingDisabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withLoggingEnabled(Map<String, String> config) {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withLoggingDisabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StateStore build() {
+                        if (factoryNames.contains("SC,PK"))
+                            return new InMemoryWindowDegreeMultiStoreCGraphList<>(name, scopeSize, scopeSlide, valueAndTimestampConstraintFactories[0], valueAndTimestampConstraintFactories[1]);
+                        if (factoryNames.contains("SC"))
+                            return new InMemoryWindowDegreeMultiStoreCGraphList<>(name, scopeSize, scopeSlide, valueAndTimestampConstraintFactories[0], "");
+                        else if (factoryNames.contains("PK"))
+                            return new InMemoryWindowDegreeMultiStoreCGraphList<>(name, scopeSize, scopeSlide, valueAndTimestampConstraintFactories[0]);
+                        else
+                            throw new IllegalArgumentException("The factory names are not correct, should not build a store.");
+                    }
+
+                    @Override
+                    public Map<String, String> logConfig() {
+                        return null;
+                    }
+
+                    @Override
+                    public boolean loggingEnabled() {
+                        return false;
+                    }
+
+                    @Override
+                    public String name() {
+                        return name;
+                    }
+                });
+
+
+
+                return storeBuilders;
+            }
+        }).transform(new TransformerSupplier<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>>() {
+            @Override
+            public Transformer<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>> get() {
+                return new PerformanceInputInconsistencyTransformer<>(applicationSupplier, props);
+            }
+        }));
+    }
+
+
+    public static <K,V> AnnKStream<K,V> annotateMultiConstraintOnlyValues(KStream<K, V> stream, long scopeSize, long scopeSlide,
+                                                                ApplicationSupplier applicationSupplier, Properties props, String factoryNames, ConstraintFactory<ValueAndTimestamp<V>>[] valueAndTimestampConstraintFactories, K defaultKey) {
+
+        if (factoryNames.equals(""))
+            throw new IllegalArgumentException("The number of names must be equal to the number of factories");
+        String[] names = factoryNames.split(",");
+        if (names.length != valueAndTimestampConstraintFactories.length) {
+            throw new IllegalArgumentException("The number of names must be equal to the number of factories");
+        }
+
+
+        String name = "KSTREAM-MULTI-ANNOTATE-STORE-"+ UUID.randomUUID();
+
+
+        return new AnnKStreamImpl<>(stream.transformValues(new ValueTransformerSupplier<V, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>() {
+            @Override
+            public ValueTransformer<V, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> get() {
+                switch (factoryNames) {
+                    case "SC,PK,Sch":
+                        return new ConsistencyAnnotatorMultiConstraintOnlyValues<>(scopeSize, scopeSlide, valueAndTimestampConstraintFactories[2], name, defaultKey);
+                    case "SC,PK":
+                        return new ConsistencyAnnotatorMultiConstraintOnlyValues<>(scopeSize, scopeSlide, name, defaultKey);
+                    case "SC,Sch":
+                        return new ConsistencyAnnotatorMultiConstraintOnlyValues<>(scopeSize, scopeSlide, valueAndTimestampConstraintFactories[1], name, defaultKey);
+                    case "PK,Sch":
+                        return new ConsistencyAnnotatorMultiConstraintOnlyValues<>(scopeSize, scopeSlide, valueAndTimestampConstraintFactories[1], name, defaultKey);
+                    case "Sch":
+                        return new ConsistencyAnnotatorMultiConstraintOnlyValues<>(scopeSize, scopeSlide, valueAndTimestampConstraintFactories[0], defaultKey);
+                    case "SC":
+                        return new ConsistencyAnnotatorMultiConstraintOnlyValues<>(scopeSize, scopeSlide, name, defaultKey);
+                    case "PK":
+                        return new ConsistencyAnnotatorMultiConstraintOnlyValues<>(scopeSize, scopeSlide, name, defaultKey);
+                    default: throw new IllegalArgumentException("The factory names are not correct");
+                }
+            }
+
+
+            public Set<StoreBuilder<?>> stores() {
+
+                if (factoryNames.equals("Sch"))
+                    return null;
+
+                Set<StoreBuilder<?>> storeBuilders = new HashSet<>();
+
+                storeBuilders.add(new StoreBuilder<>() {
+                    @Override
+                    public StoreBuilder<StateStore> withCachingEnabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withCachingDisabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withLoggingEnabled(Map<String, String> config) {
+                        return null;
+                    }
+
+                    @Override
+                    public StoreBuilder<StateStore> withLoggingDisabled() {
+                        return null;
+                    }
+
+                    @Override
+                    public StateStore build() {
+                        if (factoryNames.contains("SC,PK"))
+                            return new InMemoryWindowDegreeMultiStoreCGraphList<>(name, scopeSize, scopeSlide, valueAndTimestampConstraintFactories[0], valueAndTimestampConstraintFactories[1]);
+                        if (factoryNames.contains("SC"))
+                            return new InMemoryWindowDegreeMultiStoreCGraphList<>(name, scopeSize, scopeSlide, valueAndTimestampConstraintFactories[0], "");
+                        else if (factoryNames.contains("PK"))
+                            return new InMemoryWindowDegreeMultiStoreCGraphList<>(name, scopeSize, scopeSlide, valueAndTimestampConstraintFactories[0]);
+                        else
+                            throw new IllegalArgumentException("The factory names are not correct, should not build a store.");
+                    }
+
+                    @Override
+                    public Map<String, String> logConfig() {
+                        return null;
+                    }
+
+                    @Override
+                    public boolean loggingEnabled() {
+                        return false;
+                    }
+
+                    @Override
+                    public String name() {
+                        return name;
+                    }
+                });
+
+
+
+                return storeBuilders;
+            }
+        }).transformValues(new ValueTransformerSupplier<ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>() {
+            @Override
+            public ValueTransformer<ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>> get() {
+                return new PerformanceInputInconsistencyTransformerOnlyValues<>(applicationSupplier, props);
+            }
+        }));
+    }
+
     public static <K,V> AnnKStream<K,V> annotateDoubleConstraint(KStream<K, V> stream, long scopeSize, long scopeSlide,
                                                                      ConstraintFactory<ValueAndTimestamp<V>> valueAndTimestampConstraintFactory, ConstraintFactory<ValueAndTimestamp<V>> valueAndTimestampConstraintFactory2, ApplicationSupplier applicationSupplier, Properties props) {
         String ANNOTATE_NAME = "KSTREAM-ANNOTATE-STORE-"+ UUID.randomUUID();
@@ -296,7 +564,7 @@ public interface AnnKStream<K, V> {
         return new AnnKStreamImpl<>(stream.transform(new TransformerSupplier<K, V, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>>() {
             @Override
             public Transformer<K, V, KeyValue<K, ConsistencyAnnotatedRecord<ValueAndTimestamp<V>>>> get() {
-                return new ConsistencyAnnotatorMultiConstraintSong<>(ANNOTATE_NAME, ANNOTATE_NAME2, scopeSize, scopeSlide);
+                return new ConsistencyAnnotatorDoubleConstraintSong<>(ANNOTATE_NAME, ANNOTATE_NAME2, scopeSize, scopeSlide);
             }
 
 

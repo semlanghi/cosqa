@@ -65,7 +65,7 @@ public class PerformanceInputTransformerNotAnnotated<Kin, Vin> implements Transf
 
     private long getMemorySize() {
         Runtime runtime = Runtime.getRuntime();
-        return runtime.totalMemory();
+        return runtime.totalMemory() - runtime.freeMemory();
     }
 
     private double getCpuUtilization() {

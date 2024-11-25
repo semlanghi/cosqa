@@ -17,6 +17,11 @@ public class SchemaConstraintReviewValueFactory implements ConstraintFactory<Val
     }
 
     @Override
+    public String getDescription() {
+        return "Sch";
+    }
+
+    @Override
     public StreamingConstraint<ValueAndTimestamp<Review>> make(ValueAndTimestamp<Review> origin) {
         return new SpeedConstraint<>(origin) {
             @Override

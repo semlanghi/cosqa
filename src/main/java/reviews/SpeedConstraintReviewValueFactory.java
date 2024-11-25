@@ -19,6 +19,11 @@ public class SpeedConstraintReviewValueFactory implements ConstraintFactory<Valu
     }
 
     @Override
+    public String getDescription() {
+        return "SC";
+    }
+
+    @Override
     public StreamingConstraint<ValueAndTimestamp<Review>> make(ValueAndTimestamp<Review> origin) {
         return new SpeedConstraint<>(origin) {
             @Override

@@ -6,5 +6,6 @@ package annotation.constraint;
  * @param <V> the value handled by the constraint
  */
 public interface ConstraintFactory<V> {
+    public String getDescription();
     public StreamingConstraint<V> make(V origin);
 }

@@ -18,6 +18,11 @@ public class PKGPSValueFactory implements ConstraintFactory<ValueAndTimestamp<GP
     public PKGPSValueFactory() {
     }
 
+    @Override
+    public String getDescription() {
+        return "PK";
+    }
+
 
     @Override
     public StreamingConstraint<ValueAndTimestamp<GPS>> make(ValueAndTimestamp<GPS> origin) {

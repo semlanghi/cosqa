@@ -4,6 +4,7 @@ package annotation.polynomial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 public class Polynomial implements Serializable {
     private List<Monomial> monomials;
@@ -76,7 +77,7 @@ public class Polynomial implements Serializable {
      * @return the polynomial whose value is {@code (this(x) + that(x))}
      */
     public Polynomial plus(Polynomial that) {
-        this.monomials.addAll(that.monomials);
+        this.monomials.addAll(that.monomials.stream().filter(monomial -> !monomial.variables.isEmpty()).toList());
         return new Polynomial(this.monomials, Math.max(this.degree, that.degree),
                 this.monomialsDegreeSum+ that.monomialsDegreeSum);
     }

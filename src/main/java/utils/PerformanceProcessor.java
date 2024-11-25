@@ -131,7 +131,7 @@ public class PerformanceProcessor<Kin, Vin> implements Processor<Kin, Consistenc
 
     private long getMemorySize() {
         Runtime runtime = Runtime.getRuntime();
-        return runtime.totalMemory();
+        return runtime.totalMemory() - runtime.freeMemory();
     }
 
     private double getCpuUtilization() {

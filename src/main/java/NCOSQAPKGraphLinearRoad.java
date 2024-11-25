@@ -54,7 +54,7 @@ public class NCOSQAPKGraphLinearRoad {
         props.put(ExperimentConfig.EVENTS_MAX, args[5]);
         props.put(ExperimentConfig.EVENTS_GRANULARITY, args[6]);
 
-        props.put(ExperimentConfig.RESULT_FILE_SUFFIX, "ncosqa-linearroad-graph");
+        props.put(ExperimentConfig.RESULT_FILE_SUFFIX, "ncosqa-linearroad-graph-pk");
 
         int constraintStrictness = Integer.parseInt(props.getProperty(ExperimentConfig.CONSTRAINT_STRICTNESS));
         Duration size = Duration.ofMillis(Long.parseLong(props.getProperty(ExperimentConfig.WINDOW_SIZE_MS)));

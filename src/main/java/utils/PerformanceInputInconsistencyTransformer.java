@@ -3,6 +3,7 @@ package utils;
 import annotation.ConsistencyAnnotatedRecord;
 import annotation.polynomial.Monomial;
 import com.opencsv.CSVWriter;
+import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.Transformer;
 
@@ -11,6 +12,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
+import java.time.Duration;
 import java.util.Properties;
 import java.util.function.Predicate;
 
@@ -34,7 +36,6 @@ public class PerformanceInputInconsistencyTransformer<Kin, Vin> implements Trans
     private double cpuUtilizationSum = 0.0;
     private double cpuUtilizationMax = 0.0;
     private long numberOfInconsistencies;
-
 
 
     public PerformanceInputInconsistencyTransformer(ApplicationSupplier shutdownHook, Properties properties) {
@@ -69,7 +70,7 @@ public class PerformanceInputInconsistencyTransformer<Kin, Vin> implements Trans
 
     private long getMemorySize() {
         Runtime runtime = Runtime.getRuntime();
-        return runtime.totalMemory();
+        return runtime.totalMemory() - runtime.freeMemory();
     }
 
     private double getCpuUtilization() {
@@ -116,6 +117,7 @@ public class PerformanceInputInconsistencyTransformer<Kin, Vin> implements Trans
 
     @Override
     public KeyValue<Kin, ConsistencyAnnotatedRecord<Vin>> transform(Kin key, ConsistencyAnnotatedRecord<Vin> value) {
+        count++;
         try {
             long memorySize = getMemorySize();
             double cpuUtilization = getCpuUtilization();
@@ -133,12 +135,13 @@ public class PerformanceInputInconsistencyTransformer<Kin, Vin> implements Trans
                         }
                     }).count();
 
-            count++;
+
             if (count%granularity==0 && granularity!=-1){
                 register();
             }
 
-            if(count > maxEvents && !finished){
+            long currentTime = System.currentTimeMillis();
+            if((count > maxEvents || currentTime - this.timeStart > Duration.ofMinutes(10).toMillis()) && !finished){
                 finished = true;
                 register();
                 shutdownHook.close();

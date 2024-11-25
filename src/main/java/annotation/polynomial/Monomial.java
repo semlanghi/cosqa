@@ -158,7 +158,7 @@ public abstract class Monomial<R> implements Serializable {
         for (Map.Entry<R, Integer> tmp : variables.entrySet()
              ) {
             if (tmp.getValue()>0)
-                sb.append(tmp.getKey().toString()).append("^").append(tmp.getValue());
+                sb.append("<").append(tmp.getKey().toString()).append(">").append("^").append(tmp.getValue());
         }
         return sb.toString();
     }

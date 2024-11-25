@@ -73,4 +73,8 @@ public class Stock {
     public void addTimestamp(long l) {
         this.ts += l;
     }
+
+    public void setValue(double repaired) {
+        this.value = repaired;
+    }
 }

@@ -18,6 +18,11 @@ public class PKLinearRoadValueFactory implements ConstraintFactory<ValueAndTimes
     }
 
     @Override
+    public String getDescription() {
+        return "PK";
+    }
+
+    @Override
     public StreamingConstraint<ValueAndTimestamp<SpeedEvent>> make(ValueAndTimestamp<SpeedEvent> origin) {
         return new PrimaryKeyConstraint<Integer, SpeedEvent>(origin) {
             @Override

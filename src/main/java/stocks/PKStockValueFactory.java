@@ -14,7 +14,10 @@ import java.util.Random;
  */
 public class PKStockValueFactory implements ConstraintFactory<ValueAndTimestamp<Stock>> {
 
-
+    @Override
+    public String getDescription() {
+        return "PK";
+    }
 
     public PKStockValueFactory() {
     }

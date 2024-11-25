@@ -85,4 +85,8 @@ public class Review {
                 ", value=" + value +
                 '}';
     }
+
+    public void setValue(int repaired) {
+        this.value = repaired;
+    }
 }

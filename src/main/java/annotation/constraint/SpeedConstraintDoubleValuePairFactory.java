@@ -5,6 +5,12 @@ import org.apache.commons.lang3.tuple.Pair;
 public record SpeedConstraintDoubleValuePairFactory(double maxCoefficient,
                                                     double minCoefficient) implements ConstraintFactory<Pair<Double, Long>> {
 
+
+    @Override
+    public String getDescription() {
+        return "SC";
+    }
+
     @Override
     public StreamingConstraint<Pair<Double, Long>> make(Pair<Double, Long> valueAndTimestamp) {
         return new SpeedConstraintPair<>(valueAndTimestamp) {

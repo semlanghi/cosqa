@@ -15,6 +15,9 @@ public class GPS {
         this.ts = ts;
     }
 
+    public long getTs() {
+        return ts;
+    }
 
     public String key() {
         return "key";
@@ -79,5 +82,13 @@ public class GPS {
                 ", y=" + y +
                 ", ts=" + ts +
                 '}';
+    }
+
+    public void setX(double repaired) {
+        this.x = repaired;
+    }
+
+    public void setY(double repaired) {
+        this.y = repaired;
     }
 }

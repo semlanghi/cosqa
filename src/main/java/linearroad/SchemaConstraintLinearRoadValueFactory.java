@@ -15,6 +15,11 @@ public class SchemaConstraintLinearRoadValueFactory implements ConstraintFactory
     }
 
     @Override
+    public String getDescription() {
+        return "Sch";
+    }
+
+    @Override
     public StreamingConstraint<ValueAndTimestamp<SpeedEvent>> make(ValueAndTimestamp<SpeedEvent> origin) {
         return new SpeedConstraint<>(origin) {
             @Override

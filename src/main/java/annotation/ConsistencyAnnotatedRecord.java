@@ -260,6 +260,9 @@ public class ConsistencyAnnotatedRecord<V> {
         Polynomial polynomial = new Polynomial(monomial);
         System.out.println(polynomial);
 
+
+
+
         Monomial monomial1 = new MonomialImplString("<csacd y>", 3333);
         Monomial monomial2 = new MonomialImplString("<csacdx>", 2);
 //        System.out.println(polynomial.plus(new Polynomial(monomial1)).times(monomial2));

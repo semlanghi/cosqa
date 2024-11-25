@@ -6,6 +6,11 @@ public record SpeedConstraintLongValueFactory(double maxCoefficient,
                                               double minCoefficient) implements ConstraintFactory<ValueAndTimestamp<Long>> {
 
     @Override
+    public String getDescription() {
+        return "SC";
+    }
+
+    @Override
     public StreamingConstraint<ValueAndTimestamp<Long>> make(ValueAndTimestamp<Long> origin) {
         return new SpeedConstraint<>(origin) {
             @Override

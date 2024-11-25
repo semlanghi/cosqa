@@ -16,6 +16,11 @@ public class SchemaConstraintStockValueFactory implements ConstraintFactory<Valu
     }
 
     @Override
+    public String getDescription() {
+        return "Sch";
+    }
+
+    @Override
     public StreamingConstraint<ValueAndTimestamp<Stock>> make(ValueAndTimestamp<Stock> origin) {
         return new SpeedConstraint<>(origin) {
             @Override
