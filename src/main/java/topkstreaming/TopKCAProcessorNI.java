@@ -145,7 +145,7 @@ public class TopKCAProcessorNI<K,V> extends ContextualProcessor<Windowed<K>, V, 
 
     private long getMemorySize() {
         Runtime runtime = Runtime.getRuntime();
-        return runtime.totalMemory();
+        return runtime.totalMemory()- runtime.freeMemory();
     }
 
     private double getCpuUtilization() {

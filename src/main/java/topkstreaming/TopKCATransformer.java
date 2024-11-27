@@ -153,7 +153,7 @@ public class TopKCATransformer<K,V> implements ValueTransformerWithKey<Windowed<
 
     private long getMemorySize() {
         Runtime runtime = Runtime.getRuntime();
-        return runtime.totalMemory();
+        return runtime.totalMemory()- runtime.freeMemory();
     }
 
     private double getCpuUtilization() {
