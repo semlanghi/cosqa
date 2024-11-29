@@ -66,7 +66,6 @@ PROJECT_DIR/scripts/cosqa-run-ablation-study.sh RESULTS_DIR nrecords_to_process 
 ```
 
 
-
 NOTE: `granularity` is a debug parameter, and it should always be bigger than `nrecords_to_process` when running the experiments. 
 
 The baseline experiments can be executed through the `run-inca.sh` script, with the same argument as the previous two scripts (consider that the baseline is far slower, thus it is reasonable to use a reduced number of events).
