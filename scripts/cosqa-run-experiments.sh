@@ -3,7 +3,8 @@
 #$1 RESULTS_DIR
 #$2 NRECORDS_TO_PROCESS
 #$3 GRANULARITY
-KAFKA_HOME="/Users/samuelelanghi/Documents/platforms/kafka_2.13-3.1.0"
+#$4 KAFKA_HOME
+KAFKA_HOME="$4"
 
 
 MEMORY="15g"

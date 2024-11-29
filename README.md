@@ -14,7 +14,14 @@ A streaming-adapted, database Baseline implementation is located in [this](https
 ### Performances
 
 The experiments were performed using Java 17.0.2 and built through Maven 3.8.1. 
-On top of this, it is necessary to download Apache Kafka 3.1.0.
+On top of this, it is necessary to download Apache Kafka 3.1.0. If not already installed, [here](https://kafka.apache.org/quickstart) is the quickstart guide.
+
+Fot the next instructions, we will refer to the KAFKA_DIR label to indicate the kafka folder path, which in our case is something like 
+
+```
+/usr/platforms/kafka_2.13-3.1.0
+``` 
+
 Once everything is downloaded, startup Apache Kafka environment, first Zookeeper
 ```
 KAFKA_DIR/bin/zookeeper-server-start.sh KAFKA_DIR/config/zookeeper.properties
@@ -45,13 +52,20 @@ Run the following script to create and populate Kafka topics, where `nrecords` i
 Run the following script to start the experiments, where `nrecords` are the number of records that each query needs to process in each experiment, and `RESULTS_DIR` is the directory where to put the results.
 
 ```
-.PROJECT_DIR/scripts/cosqa-run-experiments.sh RESULTS_DIR nrecords_to_process granularity
+PROJECT_DIR/scripts/cosqa-run-experiments.sh RESULTS_DIR nrecords_to_process granularity KAFKA_DIR
 ```
 
 This other script runs KCOSQA experiments
 ```
-.PROJECT_DIR/scripts/kcosqa-process.sh RESULTS_DIR nrecords_to_process granularity
+PROJECT_DIR/scripts/kcosqa-process.sh RESULTS_DIR nrecords_to_process granularity KAFKA_DIR
 ```
+
+Ultimately, the ablation study can be performed through the following instruction
+```
+PROJECT_DIR/scripts/cosqa-run-ablation-study.sh RESULTS_DIR nrecords_to_process granularity KAFKA_DIR
+```
+
+
 
 NOTE: `granularity` is a debug parameter, and it should always be bigger than `nrecords_to_process` when running the experiments. 
 
@@ -72,7 +86,7 @@ In the following, the performance results in terms of throughput, memory consump
 
 ### Qualitative 
 
-In the following, we report a qualitative study that we performed on an aggregate query that calculates the total cost of electric consumption, wrt the following query 
+In the following, we report a qualitative study that we performed on an aggregate query that calculates the total cost of electric consumption:
 
 ```
 SELECT area,sum(consA)*1.2+sum(consB)*1.5,ts

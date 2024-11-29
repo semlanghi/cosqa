@@ -3,9 +3,10 @@
 #$1 RESULTS_DIR
 #$2 NRECORDS_TO_PROCESS
 #$3 GRANULARITY
+#$4 KAFKA_HOME
 
 MEMORY="15g"
-KAFKA_HOME="/Users/samuelelanghi/Documents/platforms/kafka_2.13-3.1.0"
+KAFKA_HOME="$4"
 
 for ((z=0; z<=2; z++)); do
 
