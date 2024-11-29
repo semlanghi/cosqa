@@ -83,9 +83,10 @@ NOTE: `granularity` is a debug parameter, and it should always be bigger than `n
 
 The baseline experiments can be executed through the `run-inca.sh` script, with the same argument as the previous two scripts (consider that the baseline is far slower, thus it is reasonable to use a reduced number of events).
 
-In the following, the performance results in terms of throughput, time percentage with respect to annotation and consumption overhead, scalability with respect to the number of constraints used and number of inconsistencies detected, an ablation study based on which constraints are used in which experiments, and finally a comaprative study with the technique from [1], that we have directly imported from their [repository](https://github.com/apache/iotdb/blob/master/library-udf/src/main/java/org/apache/iotdb/library/drepair/util/Screen.java).
+In the following, the performance results in terms of throughput, memory consumption, time percentage with respect to annotation and consumption overhead, scalability with respect to the number of constraints used and number of inconsistencies detected, an ablation study based on which constraints are used in which experiments, and finally a comaprative study with the technique from [1], that we have directly imported from their [repository](https://github.com/apache/iotdb/blob/master/library-udf/src/main/java/org/apache/iotdb/library/drepair/util/Screen.java).
 
 ![](throughput.png)
+![](memory.png)
 ![](annotatointime.png)
 ![](numberofconstraints.png)
 <p align="center">

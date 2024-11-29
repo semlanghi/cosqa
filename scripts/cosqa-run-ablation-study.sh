@@ -5,10 +5,11 @@
 #$3 GRANULARITY
 
 MEMORY="15g"
+KAFKA_HOME="/Users/samuelelanghi/Documents/platforms/kafka_2.13-3.1.0"
 
-for ((z=0; z<=1; z++)); do
+for ((z=0; z<=2; z++)); do
 
-  echo "Comparative Evaluation on Window Size/Slide of Only the Annotation Phase (only consumption through not aware pipeline)"
+  echo "Ablation Study on Window Size/Slide of the constraints used, Primary Key (PK), Speed (SC) and Schema (Sch) Constraints"
   constraint_considered=("SC" "PK" "Sch" "SC,PK" "SC,Sch" "PK,Sch" "SC,PK,Sch" "NI")
   window_size=(10 100 1000 10000)
   window_size_slide_factor=(2 5)
@@ -30,6 +31,16 @@ for ((z=0; z<=1; z++)); do
                       echo java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar electricgrid.ExampleAblationSCPKSch "25" 0 "$((ws))" $(((ws/wssf))) "$1" "$2" $(($2*2)) "$topic" "$cc"
                       java -Xmx"$MEMORY" -cp ../target/COSQA-jar-with-dependencies.jar electricgrid.ExampleAblationSCPKSch "25" 0 "$((ws))" $(((ws/wssf))) "$1" "$2" $(($2*2)) "$topic" "$cc" &> egc-ablation-"$cc".out &
                   fi
+                  wait
+
+                  # Get a list of topics and filter for "changelog" or "repartition"
+                  topics_to_delete=$($KAFKA_HOME/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list | grep -E "changelog|repartition")
+
+                  # Loop through each topic and delete it
+                  echo "$topics_to_delete" | while IFS= read -r topic; do
+                    echo "Deleting topic: $topic"
+                    $KAFKA_HOME/bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic "$topic"
+                  done
                   wait
               done
           done

@@ -39,3 +39,8 @@ $3/kafka-topics.sh --create --bootstrap-server localhost:9092 --topic "stocks-di
 java -cp ../target/COSQA-jar-with-dependencies.jar stocks.ProducingStocksSimulTimeDirty $1 $2 &> production-stocks-dirty.out &
 wait
 echo "Population Ended."
+echo "Creating $1 electric-grid events"
+$3/kafka-topics.sh --create --bootstrap-server localhost:9092 --topic "electricgrid-nrecords-$1" --replication-factor 1
+java -cp ../target/COSQA-jar-with-dependencies.jar electricgrid.ProducingElectricGridAblation $1 &> production-electricgrid.out &
+wait
+echo "Population Ended."
