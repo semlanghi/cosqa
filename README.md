@@ -6,33 +6,7 @@ A streaming-adapted, database Baseline implementation is located in [this](https
 
 ## Experiments 
 
-### Qualitative (preliminary)
 
-In the following, we report a qualitative study that we performed on an aggregate query that calculates the total cost of electric consumption, wrt the following query 
-
-```
-SELECT area,sum(consA)*1.2+sum(consB)*1.5,ts
-FROM Consumption [RANGE 5 minutes SLIDE 2 minutes]
-WHERE consA >= 0 AND consB >= 0
-GROUP BY area;
-```
-
-We analysed 4 (+1) different approaches for dealing with inconsistencies derivated by two speed constraints applied over the stream, i.e., SC1 and SC2.
-In our scenario, _we consider inconsistent the exclusive violation of either SC1 or SC2, but not the simultaneous violation of both_.
-The 4 approaches are:
-
-- `validation`: a database-inspired solutions where inconsistent records are simply filtered out of the stream, thus undersampling the aggregate
-- `repair`: a solution derived from [1], where is performed a repair operation over streams with respect to Speed Constraints
-- `groundtruth`: is the actual groundtruth
-- `noinc`: no inconsistency management is performed
-- `inkstream`: our approach
-
- 
-
-In our approach (`inkstream`), we readjusted the value based on the information contained in the polynomial, but we were also able to _ignore the simultaneous violation of SC1 and SC2_, resulting in a result that is nearer to the `groundtruth`.
-
-
-![](qualitative_study.png)
 
 
 
@@ -95,6 +69,34 @@ In the following, the performance results in terms of throughput, memory consump
 
 ![](throughputablation.png)
 ![](throughputcmp.png)
+
+### Qualitative 
+
+In the following, we report a qualitative study that we performed on an aggregate query that calculates the total cost of electric consumption, wrt the following query 
+
+```
+SELECT area,sum(consA)*1.2+sum(consB)*1.5,ts
+FROM Consumption [RANGE 5 minutes SLIDE 2 minutes]
+WHERE consA >= 0 AND consB >= 0
+GROUP BY area;
+```
+
+We analysed 4 (+1) different approaches for dealing with inconsistencies derivated by two speed constraints applied over the stream, i.e., SC1 and SC2.
+In our scenario, _we consider inconsistent the exclusive violation of either SC1 or SC2, but not the simultaneous violation of both_.
+The 4 approaches are:
+
+- `validation`: a database-inspired solutions where inconsistent records are simply filtered out of the stream, thus undersampling the aggregate
+- `repair`: a solution derived from [1], where is performed a repair operation over streams with respect to Speed Constraints
+- `groundtruth`: is the actual groundtruth
+- `noinc`: no inconsistency management is performed
+- `inkstream`: our approach
+
+ 
+
+In our approach (`inkstream`), we readjusted the value based on the information contained in the polynomial, but we were also able to _ignore the simultaneous violation of SC1 and SC2_, resulting in a result that is nearer to the `groundtruth`.
+
+
+![](qualitative_study.png)
 
 
 [1] Song, Shaoxu, et al. "SCREEN: stream data cleaning under speed constraints." Proceedings of the 2015 ACM SIGMOD International Conference on Management of Data. 2015.
